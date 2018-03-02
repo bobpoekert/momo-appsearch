@@ -31,36 +31,6 @@ import java.util.Arrays;
 import java.net.URISyntaxException;
 import java.io.UnsupportedEncodingException;
 
-class ResponseException extends IOException {
-
-    Map<String,String> headers;
-    byte[] body;
-
-    public ResponseException(HttpResponse response) {
-        this.headers = new HashMap<String,String>();
-        HeaderIterator it = response.headerIterator();
-        while(it.hasNext()) {
-            Header header = it.nextHeader();
-            this.headers.put(header.getName(), header.getValue());
-        }
-
-        try {
-            this.body = ByteStreams.toByteArray(response.getEntity().getContent());
-        } catch (IOException e) {
-            this.body = null;
-        }
-    }
-
-    public Map<String,String> getHeaders() {
-        return this.headers;
-    }
-
-    public byte[] getBody() {
-        return this.body;
-    }
-
-
-}
 
 public class ApacheHttpClientAdapter extends HttpClientAdapter {
 

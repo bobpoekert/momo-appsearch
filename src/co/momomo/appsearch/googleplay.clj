@@ -93,25 +93,31 @@
 (defn get-app-details
   [^String package-name]
   (with-context ctx
-    (->
-      (.details ctx package-name)
-      (.getDocV2)
-      (.getDetails)
-      (.getAppDetails))))
+    (.details ctx package-name)))
 
 (defn get-delivery-data
   ([^String package-name version-code offer-type]
     (with-context ctx
       (let [buy-response (.purchase ctx package-name ^int version-code ^int offer-type)]
-        (.getAppDeliveryData (.getPurchaseStatusResponse buy-response)))))
+        buy-response)))
   ([^String package-name]
-    (let [details (get-app-details package-name)]
-      (get-delivery-data package-name (.getVersionCode details) (.getOfferType details)))))
+    (let [details (get-app-details package-name)
+          offers (-> details
+                  (.getDocV2)
+                  (.getOfferList))
+          app-details (-> details
+                        (.getDocV2)
+                        (.getDetails)
+                        (.getAppDetails))
+          version-code (.getVersionCode app-details)]
+      (for [offer offers]
+        (get-delivery-data package-name
+          version-code
+          (.getOfferType offer))))))
 
 (defn get-signature
-  ([package-name version-code offer-type]
-    (.getSignature (get-delivery-data package-name version-code offer-type)))
-  ([package-name]
-    (.getSignature (get-delivery-data package-name))))
+  [package-name]
+  (for [offer (get-delivery-data package-name)]
+    (.getSignature offer)))
 
 ;; (get-signature "com.mobulasoft.criticker")
