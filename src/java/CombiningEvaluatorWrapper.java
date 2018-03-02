@@ -8,8 +8,12 @@ public class CombiningEvaluatorWrapper {
         return new CombiningEvaluator.And(inp);
     }
 
-    public static CombiningEvaluator.Or makeOr(Collection<Evaluator> inp) {
-        return new CombiningEvaluator.Or(inp);
+    public static CombiningEvaluator.Or makeOr(Iterable<Evaluator> inp) {
+        CombiningEvaluator.Or res = new CombiningEvaluator.Or();
+        for (Evaluator item : inp) {
+            res.add(item);
+        }
+        return res;
     }
 
 }

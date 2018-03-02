@@ -5,6 +5,12 @@
            StructuralEvaluator CombiningEvaluatorWrapper]
           [co.momomo EvaluatorFn]))
 
+(set! *warn-on-reflection* true)
+
+(defn ^String get-text
+  [^Element e]
+  (.text e))
+
 (defn select
   [^Element root ^Evaluator selector]
   (Collector/collect selector root))
@@ -17,15 +23,30 @@
 
 (defmacro sv
   [nom & args]
-  (let [sym (symbol (str "org.jsoup.select.StructuralEvaluator$" (name nom) "."))]
+  (let [sym (symbol (str "co.momomo.StructuralEvaluator$" (name nom) "."))]
     (cons sym args)))
 
 (defn path
   [& selectors]
   (reduce
     (fn [^Evaluator res ^Evaluator v]
+      (CombiningEvaluatorWrapper/makeAnd [v (sv ImmediateParent res)]))
+    selectors))
+
+(defn any-path
+  [& selectors]
+  (reduce
+    (fn [^Evaluator res ^Evaluator v]
       (CombiningEvaluatorWrapper/makeAnd [v (sv Parent res)]))
     selectors))
+
+(defn any-pos
+  [^Evaluator e]
+  (CombiningEvaluatorWrapper/makeOr [e (sv Parent e)]))
+
+(defn ^Evaluator ev
+  [thunk]
+  (EvaluatorFn. thunk)) 
 
 (defn %and
   [& selectors]
@@ -45,22 +66,11 @@
 
 (defn parent
   [^Evaluator e]
-  (sv Parent e))
+  (sv ImmediateParent e))
 
 (defn %,
-  [^Evaluator left ^Evaluator right]
-  (if (instance? CombiningEvaluator$Or left)
-    (do
-      (.add ^CombiningEvaluator$Or left right)
-      left)
-    (let [res (CombiningEvaluatorWrapper/makeOr [])]
-      (.add res right)
-      (.add res left)
-      res)))
-
-(defn ^Evaluator ev
-  [thunk]
-  (EvaluatorFn. thunk)) 
+  [& args]
+  (CombiningEvaluatorWrapper/makeOr args))
 
 (defn has-class
   [class-name]
@@ -81,7 +91,7 @@
 
 (evaluator kv
   [^String k ^String v]
-  AttributeKeyPair k v)
+  AttributeWithValue k v)
 
 (evaluator attr-starts
   [^String k]
@@ -126,3 +136,11 @@
 (evaluator id
   [^String id]
   Id id)
+
+(evaluator -nth-of-type
+  [a b]
+  IsNthOfType a b)
+
+(defn nth-of-type
+  ([a b] (-nth-of-type a b))
+  ([a] (-nth-of-type 1 a)))
