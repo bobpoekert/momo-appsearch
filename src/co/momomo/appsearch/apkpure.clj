@@ -2,32 +2,60 @@
   (require [clojure.string :as ss]
            [co.momomo.soup :refer :all])
   (import [org.jsoup Jsoup]
-          [org.jsoup.nodes Element]))
-
+          [org.jsoup.nodes Element]
+          [com.joestelmach.natty Parser DateGroup]))
 
 (set! *warn-on-reflection* true)
 
-(defn select-strip
-  [tree selection]
-  (if-let [^Element v (first (select tree selection))]
-    (.trim (.text v))))
+(defn parse-date
+  [^String d]
+  (for [^DateGroup g (.parse (Parser.) d)
+        date (.getDates g)]
+    date))
 
-(defn getattr
-  [^Element e ^String k]
-  (if e
-    (.get (.attributes e) k)))
-
-(defn select-attr
-  [tree attr selection]
-  (->>
-    (select tree selection)
-    (map #(getattr % attr))))
 
 (defn parse-infobox-row
   [^Element row]
   (let [k (select-strip row (tag "strong"))
         v (-> row (.parent) (.text))]
     {k v}))
+
+(defn parse-app-version-meta
+  [^String k ^String v]
+  (let [k (.toLowerCase (.trim k))]
+    (case k
+      "signature:" {:signature (.trim v)}
+      "file sha1:" {:file_sha1 (.trim v)}
+      "update on:" {:updated_on (first (parse-date v))}
+      "requires android:" {:android_version (.trim v)}
+      "file size:" {:file_size (.trim v)}
+      :else {k v})))
+
+(defn extract-app-versions
+  [tree]
+  (for [version (select tree (path (%and (tag "ul") (has-class "ver-wrap")) (tag "li")))]
+    (apply merge
+      {:url (first (select-attr version "href" (tag "a")))}
+      (for [^Element row (select version (path (has-class "ver-info-m") (tag "p")))]
+        (if (empty? (.getElementsByTag row "a"))
+          (parse-app-version-meta
+            (.text ^Element (first (.getElementsByTag row "strong")))
+            (.trim (.ownText row)))
+          {})))))
+
+(def category-a 
+  (->
+    (any-pos (has-class "additional"))
+    (parent)
+    (parent)
+    (any-path (%and (tag "a") (kv-val-contains "title" "Download more")))))
+
+(def thumbnail-selector 
+  (any-path
+    (path
+      (%and (tag "div") (has-class "describe"))
+      (%and (tag "div") (has-class "describe-img")))
+    (%and (tag "a") (kv "target" "_blank"))))
 
 (defn app-meta
   [tree]
@@ -37,34 +65,11 @@
                           (any-pos
                             (path
                               (%and (tag "div") (has-class "box"))
-                              (%and (tag "dl") (has-class "ny-dl"))))))
-        category-a (first (select tree
-                    (any-pos
-                      (->
+                              (%and (tag "dl") (has-class "ny-dl"))))))]
+      {:thumbnail_url (first (select-attr tree "src"
                         (path
-                          (%and (tag "div") (has-class "additional"))
-                          (tag "ul")
-                          (tag "li")
-                          (tag "p")
-                          (%and (tag "strong") (contains-own-text "Category:")))
-                        (parent)
-                        (parent)
-                        (path
-                          (tag "p")
-                          (nth-of-type 2)
-                          (tag "a"))))))
-        thumbnail-selector (any-path
-                            (path
-                              (%and (tag "div") (has-class "describe"))
-                              (%and (tag "div") (has-class "describe-img")))
-                            (%and (tag "a") (kv "target" "_blank")))]
-    (merge
-      (reduce merge (map parse-infobox-row infobox))
-      {:thumbnail_url 
-        (select-strip title-box (path
-                                  (%and (tag "div") (has-class "icon"))
-                                  (tag "img")
-                                  (has-attr "src")))
+                          (%and (tag "div") (has-class "icon"))
+                          (tag "img"))))
       :title (select-strip title-box
               (path
                 (%and (tag "div") (has-class "title-like"))
@@ -73,10 +78,11 @@
                     (any-path
                       (kv "itemtype" "http://schema.org/Organization")
                       (tag "span")))
-      :author_url (select-strip tree
-                    (path
-                      (kv "itemtype" "http://schema.org/Organization")
-                      (tag "a")))
+      :author_url (first
+                    (select-attr tree "href"
+                      (path
+                        (kv "itemtype" "http://schema.org/Organization")
+                        (tag "a"))))
       :description (try
                     (->>
                       (select tree
@@ -93,34 +99,13 @@
                             (id "describe")
                             (%and (tag "div") (has-class "description"))
                             (%and (tag "div") (has-class "content")))))))
-      :category_href (getattr category-a "href")
-      :category_tags (map get-text (select category-a (tag "span")))
-      :publish_date (select-strip tree
-                      (->
-                        (any-path
-                          (%and (tag "div") (has-class "additional"))
-                          (path
-                            (tag "p")
-                            (%and (tag "strong") (contains-own-text "Publish Date:"))))
-                        (parent)
-                        (parent)
-                        (path
-                          (tag "p")
-                          (nth-of-type 2))))
+      :category_url (first (select-attr tree "href" category-a))
+      :category_tags (map get-text (select tree (path category-a (tag "span"))))
       :appstore_links (->>
                         (select tree
                           (any-pos
                             (%and (tag "a") (kv-val-contains "ga" "get_it_on"))))
                         (map #(getattr % "href")))
-      :requirements (->>
-                      (any-pos (parent (parent (contains-own-text "Requirements:"))))
-                      (select tree)
-                      (map get-text))
-      :version_urls (select-attr tree "href"
-                      (path
-                        (%and (tag "div") (has-class "version"))
-                        (%and (tag "ul") (has-class "ver-wrap"))
-                        (tag "li")
-                        (tag "a")))
+      :versions (extract-app-versions tree)
       :snapshot_image_urls_800 (select-attr tree "href" thumbnail-selector)
-      :screenshot_image_urls_350 (select-attr tree "src" thumbnail-selector)})))
+      :screenshot_image_urls_350 (select-attr tree "src" (path thumbnail-selector (tag "img")))}))

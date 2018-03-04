@@ -5,6 +5,7 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :java-source-paths ["src/java"]
+  :profiles {:dev {:dependencies [[inspector-jay "0.3"]]}}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.jsoup/jsoup "1.11.2"]
                  [com.github.yeriomin/play-store-api "0.32"]
@@ -15,4 +16,4 @@
                  [org.clojure/java.jdbc "0.7.5"]
                  [org.xerial/sqlite-jdbc "3.7.2"]
                  [org.clojure/java.data "0.1.1"]
-                 [inspector-jay "0.3"]])
+                 [com.joestelmach/natty "0.11"]])

@@ -6,7 +6,7 @@ import clojure.lang.IFn;
 
 public class EvaluatorFn extends Evaluator {
 
-    public IFn inner;
+    public final IFn inner;
 
     public EvaluatorFn(IFn inner) {
         this.inner = inner;

@@ -15,6 +15,22 @@
   [^Element root ^Evaluator selector]
   (Collector/collect selector root))
 
+(defn select-strip
+  [tree selection]
+  (if-let [^Element v (first (select tree selection))]
+    (.trim (.text v))))
+
+(defn getattr
+  [^Element e ^String k]
+  (if e
+    (.get (.attributes e) k)))
+
+(defn select-attr
+  [tree attr selection]
+  (->>
+    (select tree selection)
+    (map #(getattr % attr))))
+
 (defmacro evaluator
   [nom args class-name & constructor-args]
   `(defn ~nom ~args
@@ -52,6 +68,10 @@
   [& selectors]
   (CombiningEvaluatorWrapper/makeAnd selectors))
 
+(defn %or
+  [& args]
+  (CombiningEvaluatorWrapper/makeOr args))
+
 (defn %>
   [^Evaluator left ^Evaluator right]
   (CombiningEvaluatorWrapper/makeAnd [right (sv ImmediateParent left)]))
@@ -68,19 +88,11 @@
   [^Evaluator e]
   (sv ImmediateParent e))
 
-(defn %,
-  [& args]
-  (CombiningEvaluatorWrapper/makeOr args))
-
 (defn has-class
   [class-name]
   (ev
     (fn [^Element root ^Element e]
       (contains? (.classNames e) class-name))))
-
-(defn desc-or-self
-  [^Evaluator inner]
-  (%, inner (sv ImmediateParent inner)))
 
 (evaluator has-attr
   [^String k]
