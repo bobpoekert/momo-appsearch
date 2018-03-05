@@ -132,4 +132,4 @@
 (defn parse-pages!
   [outf]
   (cereal/par-process-into-file!
-    (mapcat parsed-pages) urls outf))
+    parsed-pages urls outf))
