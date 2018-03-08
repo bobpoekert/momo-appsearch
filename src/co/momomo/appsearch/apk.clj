@@ -1,15 +1,15 @@
 (ns co.momomo.appsearch.apk
-  (require [clojure.java.io :as io]
-           [clojure.data.xml :as xml])
-  (import [net.dongliu.apk.parser ApkFile ByteArrayApkFile]
+  (require [clojure.java.io :as io])
+  (import [net.dongliu.apk.parser ApkFile AbstractApkFile ByteArrayApkFile]
           [net.dongliu.apk.parser.struct AndroidConstants]
           [com.android.apksig ApkVerifier ApkVerifier$Builder]
-          [hu.uw.pallergabor.dedexer
-            Dedexer DexSignatureBlock DexDependencyParser
-            DexPointerBlock DexStringIdsBlock DexTypeIdsBlock
-            DexFieldIdsBlock DexMethodIdsBlock DexClassDefsBlock
-            DexProtoIdsBlock Annotation AnnotationHolder
-            DexAnnotationParser DexAnnotationParser$AnnotationType]
+          [org.jf.dexlib2 Opcodes ValueType]
+          [org.jf.dexlib2.dexbacked DexBackedDexFile
+            DexBackedAnnotation DexBackedAnnotationElement DexBackedField
+            DexBackedMethodImplementation DexBackedMethod DexBackedClassDef]
+          [org.jf.dexlib2.iface.value EncodedValue]
+          [org.jf.dexlib2.iface.debug DebugItem]
+          [org.jf.dexlib2.iface MethodParameter]
           [java.util Arrays]
           [java.util.jar Manifest]
           [java.io File RandomAccessFile]))
@@ -26,7 +26,7 @@
     (Arrays/asList res#)))
 
 (defn get-manifest
-  [^ApkFile apk]
+  [^AbstractApkFile apk]
   (->
     (.getFileData apk "META-INF/MANIFEST.MF")
     (io/input-stream)
@@ -53,98 +53,144 @@
       (finally
         (.delete fd#)))))
 
-(defn get-visibility
+(defn mask-flags
+  [v & pairs]
+  (reduce
+    (fn [res [k mask]]
+      (if (zero? (bit-and mask v))
+        res
+        (conj res k)))
+    #{}
+    (partition 2 pairs)))
+
+(defn dex-access
   [v]
-  (case v
-    DexAnnotationParser/VISIBILITY_BUILD :build
-    DexAnnotationParser/VISIBILITY_RUNTIME :runtime
-    DexAnnotationParser/VISIBILITY_SYSTEM :system
-    nil))
-  
-(defn parse-annotation-holder
-  [^AnnotationHolder h]
-  (for [^Annotation a (.annotations h)]
-    {:visibility (get-visibility (.visibility a))
-     :type (.type a)
-     :elements (array-map (map (fn [a b] [a b])
-                            (.elementNames a) (.elementValues a)))}))
+  ;; https://www.cs.umd.edu/projects/PL/redexer/doc/Dex.html
+  (mask-flags v
+    :PUBLIC 		0x1
+    :PRIVATE 		0x2
+    :PROTECTED 		0x4
+    :STATIC 		0x8
+    :FINAL 		    0x10
+    :SYNCHRONIZED 	0x20
+    :VOLATILE 		0x40
+    :BRIDGE 		0x40
+    :TRANSIENT 		0x80
+    :VARARGS 		0x80
+    :NATIVE 		0x100
+    :INTERFACE 		0x200
+    :ABSTRACT 		0x400
+    :STRICT 		0x800
+    :SYNTHETIC 		0x1000
+    :ANNOTATION 	0x2000
+    :ENUM 		    0x4000
+    :CONSTRUCTOR 	0x10000
+    :DECLARED_SYNCHRONIZED 		0x20000))
 
-(defn get-annotations
-  [^DexClassDefsBlock dcb cls]
-  (let [dap (.getDexAnnotationParser dcb cls)]
-    {:fields (doall (map parse-annotation-holder (.getFieldAnnotations dap)))
-     :methods (doall (map parse-annotation-holder (.getMethodAnnotations dap)))
-     :parameters (doall (map parse-annotation-holder (.getParameterAnnotations dap)))
-     :class (doall (map parse-annotation-holder (.getClassAnnotations dap)))}))
+(defn dex-visibility
+  [v]
+  (case (int v)
+    0x00 :build
+    0x01 :runtime
+    0x02 :system))
+   
+(defn dex-annotation
+  [^DexBackedAnnotation ann]
+  {:visibility (dex-visibility (.getVisibility ann))
+   :type (.getType ann)
+   :elements (into {} (for [^DexBackedAnnotationElement e (.getElements ann)] [(.getName e) (.getValue e)]))})
 
-(defmacro dexconstruct
-  [classname a b]
-  `(doto (~classname)
-    (.setDexSignatureBlock ~a)
-    (.setRandomAccessFile ~b)
-    (.setDumpFile nil)
-    (.parse)))
+(defn dex-encoded-value
+  [^EncodedValue v]
+  (if (nil? v)
+    nil
+    (let [t (.getValueType v)]
+      (if (nil? t)
+        nil
+        (case t 
+          ValueType/BYTE :BYTE
+          ValueType/SHORT :SHORT
+          ValueType/CHAR :CHAR
+          ValueType/INT :INT
+          ValueType/LONG :LONG
+          ValueType/FLOAT :FLOAT
+          ValueType/DOUBLE :DOUBLE
+          ValueType/STRING :STRING
+          ValueType/TYPE :TYPE
+          ValueType/FIELD :FIELD
+          ValueType/METHOD :METHOD
+          ValueType/ENUM :ENUM
+          ValueType/ARRAY :ARRAY
+          ValueType/ANNOTATION :ANNOTATION
+          ValueType/NULL :NULL
+          ValueType/BOOLEAN :BOOLEAN
+          nil)))))
 
-(defn method-body
-  [& args]
-  nil)
+(defn dex-field
+  [^DexBackedField f]
+  {:name (.getName f)
+   :type (.getType f)
+   :defining_class (.getDefiningClass f)
+   :annotations (map dex-annotation (.getAnnotations f))
+   :initial_value (dex-encoded-value (.getInitialValue f))})
+
+(defn dex-method-parameter
+  [^MethodParameter p]
+  {:type (.getType p)
+   :annotations (map dex-annotation (.getAnnotations p))
+   :name (.getName p)
+   :signature (.getSignature p)})
+
+(defn dex-debug-item
+  [^DebugItem d]
+  {:type (.getDebugItemType d)
+   :addr (.getCodeAddress d)})
+
+(def dex-instruction bean)
+
+(defn dex-method-impl
+  [^DexBackedMethodImplementation m]
+  (if (nil? m)
+    nil
+    {:register-count (.getRegisterCount m)
+     :debug (map dex-debug-item (.getDebugItems m))
+     :instructions (map dex-instruction (.getInstructions m))}))
+
+(defn dex-method
+  [^DexBackedMethod m]
+  {:index (.getMethodIndex m)
+   :defining_class (.getDefiningClass m)
+   :access (dex-access (.getAccessFlags m))
+   :name (.getName m)
+   :return_type (.getReturnType m)
+   :parameters (map dex-method-parameter (.getParameters m))
+   :annotations (map dex-annotation (.getAnnotations m))
+   :impl (dex-method-impl (.getImplementation m))})
+
+(defn dex-class
+  [^DexBackedClassDef c]
+  {:type (.getType c)
+   :superclass (.getSuperclass c)
+   :access (dex-access (.getAccessFlags c))
+   :source_file (.getSourceFile c)
+   :interfaces (.getInterfaces c)
+   :annotations (map dex-annotation (.getAnnotations c))
+   :static_fields (map dex-field (.getStaticFields c))
+   :instance_fields (map dex-field (.getInstanceFields c))
+   :direct_methods (map dex-method (.getDirectMethods c))
+   :virtual_methods (map dex-method (.getVirtualMethods c))})
 
 (defn get-dex
-  [^ApkFile apk]
-  (with-ra-file [rfd (.getFileData apk AndroidConstants/DEX_FILE)]
-    (let [dsb (doto (DexSignatureBlock.)
-                    (.setRandomAccessFile rfd)
-                    (.setDumpFile nil)
-                    (.parse))
-          deps-parser (dexconstruct DexDependencyParser. dsb rfd)
-          dpb (dexconstruct DexPointerBlock. dsb rfd)
-          dstrb (dexconstruct DexStringIdsBlock. dsb rfd)
-          dtb (dexconstruct DexTypeIdsBlock. dsb rfd)
-          dpib (dexconstruct DexProtoIdsBlock. dsb rfd)
-          dfb (dexconstruct DexFieldIdsBlock. dsb rfd)
-          dmb (dexconstruct DexMethodIdsBlock. dsb rfd)
-          dcb (dexconstruct DexClassDefsBlock. dsb rfd)]
-        (doall
-          (for [^Integer cls (iterator-seq (.getClassIterator dcb))]
-            {:class_name (.getClassNameOnly dcb cls)
-             :interface? (.isInterface dcb cls)
-             :superclass_name (.getSuperClass dcb cls)
-             :source_name (.getSourceName dcb cls)
-             :implements (rangelist [idx (.getInterfacesSize dcb)]
-                          (.getInterface dcb cls idx))
-             :annotations (get-annotations dcb cls)
-             :static_fields (rangelist [idx (.getStaticFieldsSize dcb cls)]
-                              (let [sn (.getStaticFieldShortName dcb cls idx)]
-                                {:name (.getStaticField dcb cls idx)
-                                 :initializer (.getStaticFieldInitializer dcb cls idx)
-                                 :short_name sn}))
-             :instance_fields (rangelist [idx (.getInstanceFieldSize dcb cls)]
-                                (let [sn (.getFieldShortName dcb cls idx)]
-                                  {:name (.getInstanceField dcb cls idx)
-                                   :short_name sn}))
-             :direct_methods (rangelist [idx (.getDirectMethodsFieldsSize dcb cls)]
-                              (let [sn (.getDirectMethodShortName dcb cls idx)
-                                    n (.getDirectMethodName dcb cls idx)]  
-                                {:name n 
-                                 :short_name sn
-                                 :access (.getDirectMethodAccess dcb cls idx)
-                                 :body (method-body dcb n (.getDirectMethodOffset dcb cls idx) cls idx)}))
-             :virtual_methods (rangelist [idx (.getVirtualMehtodsFieldsSize dcb cls)]
-                                (let [n (.getVirtualMethodName dcb cls idx)
-                                      sn (.getVirtualShortMethodName dcb cls idx)]
-                                  {:name n
-                                   :short_name sn
-                                   :access (.getVirtualMethodAccess dcb cls idx)
-                                   :body (method-body dcb n (.getVirtualMethodOffset dcb cls idx) cls idx)}))})))))
-
+  [^AbstractApkFile apk]
+  (let [^bytes data (.getFileData apk AndroidConstants/DEX_FILE)
+        ^DexBackedDexFile dex (DexBackedDexFile. (Opcodes/getDefault) data)]
+    {:classes (map dex-class (.getClasses dex))}))
 
 (defn load-apk
   [^bytes apk-data]
-  (let [fd (file-from-bytes apk-data)]
+  (let [^File fd (file-from-bytes apk-data)]
     (let [veri (->
                   (ApkVerifier$Builder. fd)
-                  (.setMinSdkVersion 14)
-                  (.setMinCheckedPlatformVersion 14)
                   (.build)
                   (.verify))
           apk (ByteArrayApkFile. apk-data)]
