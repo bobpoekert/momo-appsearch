@@ -20,14 +20,13 @@
   [^LinkedBlockingQueue q ins]
   (do
     (doseq [v ins]
-      (prn v)
       (.put q v))
     (close-queue! q)))
 
 (defn thread
-  [f]
+  [n f]
   (doto
-    (Thread. f)
+    (Thread. f n)
     (.start)))
 
 (defn par-process-into-file!
@@ -35,9 +34,10 @@
   (with-open [douts (fress/create-writer (io/output-stream outf))]
     (let [inq (LinkedBlockingQueue. 10)
           ^LinkedBlockingQueue outq (LinkedBlockingQueue. 10)]
-      (thread (partial into-queue! inq inp))
+      (thread "par-process-into-file! generator"
+        (partial into-queue! inq inp))
       (dotimes [core (dec (.availableProcessors (Runtime/getRuntime)))]
-        (thread
+        (thread "par-process-into-file! worker"
           (fn []
             (do
               (transduce transducer

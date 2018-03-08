@@ -4,7 +4,7 @@
            [co.momomo.soup :refer :all]
            [co.momomo.appsearch.html-reader :refer [xz-pages-from-url]]
            [co.momomo.cereal :as cereal]
-           [cheshire.core :as json])
+           [clj-http.client :as http])
   (import [org.jsoup Jsoup]
           [org.jsoup.nodes Element]
           [java.io InputStream OutputStream]
@@ -132,4 +132,18 @@
 (defn parse-pages!
   [outf]
   (cereal/par-process-into-file!
-    parsed-pages urls outf))
+    (mapcat parsed-pages) urls outf))
+
+(defn download-apk
+  [app-meta]
+  (->
+    (str "https://apkpure.com" (:download_url app-meta))
+    (http/get)
+    (:body)
+    (Jsoup/parse)
+    (select-attr "src"
+      (any-pos
+        (%and (tag "iframe") (id "iframe_download"))))
+    (first)
+    (http/get {:as :byte-array})
+    (:body)))

@@ -21,4 +21,5 @@
                  [ring/ring-jetty-adapter "1.6.3"]
                  [cheshire "5.8.0"]
                  [net.dongliu/apk-parser "2.5.3"]
-                 [org.clojure/data.fressian "0.2.1"]])
+                 [org.clojure/data.fressian "0.2.1"]
+                 [org.clojure/data.xml "0.0.8"]])
