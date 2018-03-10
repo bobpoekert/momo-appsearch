@@ -9,7 +9,7 @@
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.jsoup/jsoup "1.11.2"]
                  [com.github.yeriomin/play-store-api "0.32"]
-                 [clj-http "3.7.0"]
+                 [clj-http "3.8.0"]
                  [com.google.guava/guava "24.0-jre"]
                  [org.clojure/java.jdbc "0.7.5"]
                  [org.xerial/sqlite-jdbc "3.7.2"]
@@ -22,4 +22,5 @@
                  [cheshire "5.8.0"]
                  [net.dongliu/apk-parser "2.5.3"]
                  [org.clojure/data.fressian "0.2.1"]
-                 [org.smali/dexlib2 "2.2.3"]])
+                 [org.smali/dexlib2 "2.2.3"]
+                 [proteus "0.1.6"]])

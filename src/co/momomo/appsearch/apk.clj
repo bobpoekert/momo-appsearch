@@ -1,20 +1,83 @@
 (ns co.momomo.appsearch.apk
-  (require [clojure.java.io :as io])
+  (require [clojure.java.io :as io]
+           [proteus :refer [let-mutable]])
   (import [net.dongliu.apk.parser ApkFile AbstractApkFile ByteArrayApkFile]
           [net.dongliu.apk.parser.struct AndroidConstants]
           [com.android.apksig ApkVerifier ApkVerifier$Builder]
-          [org.jf.dexlib2 Opcodes ValueType]
+          [com.android.apksig.util DataSources]
+          [org.jf.dexlib2 Opcode Opcodes ValueType]
           [org.jf.dexlib2.dexbacked DexBackedDexFile
             DexBackedAnnotation DexBackedAnnotationElement DexBackedField
             DexBackedMethodImplementation DexBackedMethod DexBackedClassDef]
           [org.jf.dexlib2.iface.value EncodedValue]
           [org.jf.dexlib2.iface.debug DebugItem]
           [org.jf.dexlib2.iface MethodParameter]
+          [org.jf.dexlib2.iface.instruction Instruction
+            DualReferenceInstruction FieldOffsetInstruction
+            FiveRegisterInstruction HatLiteralInstruction
+            InlineIndexInstruction OffsetInstruction
+            OneRegisterInstruction ReferenceInstruction
+            RegisterRangeInstruction SwitchElement SwitchPayload
+            ThreeRegisterInstruction TwoRegisterInstruction
+            VariableRegisterInstruction VerificationErrorInstruction
+            VtableIndexInstruction WideLiteralInstruction]
           [java.util Arrays]
           [java.util.jar Manifest]
+          [java.nio ByteBuffer]
           [java.io File RandomAccessFile]))
 
 (set! *warn-on-reflection* true)
+   
+(defn hash-instruction
+  [^Instruction v]
+  (let [^Opcode op (.getOpcode v)]
+    (let-mutable [res -1]
+      (set! res (hash-combine res (hash (.getCodeUnits v))))
+      (set! res (hash-combine res (hash (.name op))))
+      (set! res (hash-combine res (hash (.flags op))))
+      (set! res (hash-combine res (hash (.referenceType op))))
+      (set! res (hash-combine res (hash (.referenceType2 op))))
+      (when (instance? DualReferenceInstruction v)
+        (set! res (hash-combine res (hash (.getReferenceType2 ^DualReferenceInstruction v))))
+        (set! res (hash-combine res (.hashCode (.getReference2 ^DualReferenceInstruction v)))))
+      (when (instance? FieldOffsetInstruction v)
+        (set! res (hash-combine res (hash (.getFieldOffset ^FieldOffsetInstruction v)))))
+      (when (instance? FiveRegisterInstruction v)
+        (set! res (hash-combine res (hash (.getRegisterC ^FiveRegisterInstruction v))))
+        (set! res (hash-combine res (hash (.getRegisterD ^FiveRegisterInstruction v))))
+        (set! res (hash-combine res (hash (.getRegisterE ^FiveRegisterInstruction v))))
+        (set! res (hash-combine res (hash (.getRegisterF ^FiveRegisterInstruction v))))
+        (set! res (hash-combine res (hash (.getRegisterG ^FiveRegisterInstruction v)))))
+      (when (instance? HatLiteralInstruction v)
+        (set! res (hash-combine res (hash (.getHatLiteral ^HatLiteralInstruction v)))))
+      (when (instance? InlineIndexInstruction v)
+        (set! res (hash-combine res (hash (.getInlineIndex ^InlineIndexInstruction v)))))
+      (when (instance? OffsetInstruction v)
+        (set! res (hash-combine res (hash (.getCodeOffset ^OffsetInstruction v)))))
+      (when (instance? OneRegisterInstruction v)
+        (set! res (hash-combine res (hash (.getRegisterA ^OneRegisterInstruction v)))))
+      (when (instance? ReferenceInstruction v)
+        (set! res (hash-combine res (hash (.getReferenceType ^ReferenceInstruction v))))
+        (set! res (hash-combine res (.hashCode (.getReference ^ReferenceInstruction v)))))
+      (when (instance? RegisterRangeInstruction v)
+        (set! res (hash-combine res (hash (.getStartRegister ^RegisterRangeInstruction v)))))
+      (when (instance? SwitchPayload v)
+        (doseq [^SwitchElement elem (.getSwitchElements ^SwitchPayload v)]
+          (set! res (hash-combine res (hash (.getKey elem))))
+          (set! res (hash-combine res (hash (.getOffset elem))))))
+      (when (instance? ThreeRegisterInstruction v)
+        (set! res (hash-combine res (hash (.getRegisterC ^ThreeRegisterInstruction v)))))
+      (when (instance? TwoRegisterInstruction v)
+        (set! res (hash-combine res (hash (.getRegisterB ^TwoRegisterInstruction v)))))
+      (when (instance? VariableRegisterInstruction v)
+        (set! res (hash-combine res (hash (.getRegisterCount ^VariableRegisterInstruction v)))))
+      (when (instance? VerificationErrorInstruction v)
+        (set! res (hash-combine res (hash (.getVerificationError ^VerificationErrorInstruction v)))))
+      (when (instance? VtableIndexInstruction v)
+        (set! res (hash-combine res (hash (.getVtableIndex ^VtableIndexInstruction v)))))
+      (when (instance? WideLiteralInstruction v)
+        (set! res (hash-combine res (hash (.getWideLiteral ^WideLiteralInstruction v)))))
+      res)))
 
 (defmacro rangelist
   "(for [idx (range foo)] bar) -> (rangelist [idx foo] bar). strict."
@@ -25,33 +88,22 @@
       (aset res# ~binder (do ~@generator)))
     (Arrays/asList res#)))
 
+(defn parse-manifest-entry
+  [e]
+  (into {}
+    (for [[k v] e]
+      [(str k) v])))
+
 (defn get-manifest
   [^AbstractApkFile apk]
-  (->
-    (.getFileData apk "META-INF/MANIFEST.MF")
-    (io/input-stream)
-    (Manifest.)
-    (.getEntries)))
-
-(defn file-from-bytes
-  [^bytes bs]
-  (let [res (File/createTempFile "temp" "blob")]
-    (with-open [outs (io/output-stream res)]
-      (.write outs bs))
-    res))
-
-(defn ra-file-from-bytes
-  [^bytes bs]
-  (let [^File fd (file-from-bytes bs)]
-    [fd (RandomAccessFile. fd "a+")]))
-
-(defmacro with-ra-file
-  [[binder inp] & bodies]
-  `(let [[^File fd# ~binder] (ra-file-from-bytes ~inp)]
-    (try
-      ~@bodies
-      (finally
-        (.delete fd#)))))
+  (->>
+    (->
+      (.getFileData apk "META-INF/MANIFEST.MF")
+      (io/input-stream)
+      (Manifest.)
+      (.getEntries))
+    (map (fn [v] [(key v) (parse-manifest-entry (val v))]))
+    (into {})))
 
 (defn mask-flags
   [v & pairs]
@@ -97,8 +149,8 @@
 (defn dex-annotation
   [^DexBackedAnnotation ann]
   {:visibility (dex-visibility (.getVisibility ann))
-   :type (.getType ann)
-   :elements (into {} (for [^DexBackedAnnotationElement e (.getElements ann)] [(.getName e) (.getValue e)]))})
+   :type (str (.getType ann))
+   :elements (into {} (for [^DexBackedAnnotationElement e (.getElements ann)] [(str (.getName e)) (str (.getValue e))]))})
 
 (defn dex-encoded-value
   [^EncodedValue v]
@@ -128,52 +180,50 @@
 
 (defn dex-field
   [^DexBackedField f]
-  {:name (.getName f)
-   :type (.getType f)
-   :defining_class (.getDefiningClass f)
+  {:name (str (.getName f))
+   :type (str (.getType f))
+   :defining_class (str (.getDefiningClass f))
    :annotations (map dex-annotation (.getAnnotations f))
    :initial_value (dex-encoded-value (.getInitialValue f))})
 
 (defn dex-method-parameter
   [^MethodParameter p]
-  {:type (.getType p)
+  {:type (str (.getType p))
    :annotations (map dex-annotation (.getAnnotations p))
-   :name (.getName p)
-   :signature (.getSignature p)})
+   :name (str (.getName p))
+   :signature (str (.getSignature p))})
 
 (defn dex-debug-item
   [^DebugItem d]
-  {:type (.getDebugItemType d)
-   :addr (.getCodeAddress d)})
-
-(def dex-instruction bean)
+  {:type (str (.getDebugItemType d))
+   :addr (int (.getCodeAddress d))})
 
 (defn dex-method-impl
   [^DexBackedMethodImplementation m]
   (if (nil? m)
     nil
-    {:register-count (.getRegisterCount m)
+    {:register-count (int (.getRegisterCount m))
      :debug (map dex-debug-item (.getDebugItems m))
-     :instructions (map dex-instruction (.getInstructions m))}))
+     :code_hash (reduce hash-combine (map hash-instruction (.getInstructions m)))}))
 
 (defn dex-method
   [^DexBackedMethod m]
-  {:index (.getMethodIndex m)
-   :defining_class (.getDefiningClass m)
+  {:index (int (.getMethodIndex m))
+   :defining_class (str (.getDefiningClass m))
    :access (dex-access (.getAccessFlags m))
-   :name (.getName m)
-   :return_type (.getReturnType m)
+   :name (str (.getName m))
+   :return_type (str (.getReturnType m))
    :parameters (map dex-method-parameter (.getParameters m))
    :annotations (map dex-annotation (.getAnnotations m))
    :impl (dex-method-impl (.getImplementation m))})
 
 (defn dex-class
   [^DexBackedClassDef c]
-  {:type (.getType c)
-   :superclass (.getSuperclass c)
+  {:type (str (.getType c))
+   :superclass (str (.getSuperclass c))
    :access (dex-access (.getAccessFlags c))
-   :source_file (.getSourceFile c)
-   :interfaces (.getInterfaces c)
+   :source_file (str (.getSourceFile c))
+   :interfaces (str (.getInterfaces c))
    :annotations (map dex-annotation (.getAnnotations c))
    :static_fields (map dex-field (.getStaticFields c))
    :instance_fields (map dex-field (.getInstanceFields c))
@@ -186,16 +236,42 @@
         ^DexBackedDexFile dex (DexBackedDexFile. (Opcodes/getDefault) data)]
     {:classes (map dex-class (.getClasses dex))}))
 
+(defn parse-cert
+  [^java.security.cert.X509Certificate c]
+  {:subject (.getName (.getSubjectX500Principal c))
+   :issuer (.getName (.getIssuerX500Principal c))
+   :not_after (.getTime (.getNotAfter c))
+   :not_before (.getTime (.getNotBefore c))
+   :algo (.getAlgorithm (.getPublicKey c))
+   :key_format (.getFormat (.getPublicKey c))
+   :key (.getEncoded (.getPublicKey c))})
+
+(defn parse-issue
+  [^com.android.apksig.ApkVerifier$IssueWithParams w]
+  {:name (str (.getIssue w))
+   :params (map str (seq (.getParams w)))})
+
+(defn parse-verification
+  [^com.android.apksig.ApkVerifier$Result v]
+  {:verified (.isVerified v)
+   :certs (map parse-cert (.getSignerCertificates v))
+   :warnings (map parse-issue (seq (.getWarnings v)))
+   :errors (map parse-issue (seq (.getErrors v)))})
+
+(defn verify
+  [^bytes apk-data]
+  (->
+    apk-data
+    (ByteBuffer/wrap)
+    (DataSources/asDataSource)
+    (ApkVerifier$Builder.)
+    (.build)
+    (.verify)
+    (parse-verification)))
+
 (defn load-apk
   [^bytes apk-data]
-  (let [^File fd (file-from-bytes apk-data)]
-    (let [veri (->
-                  (ApkVerifier$Builder. fd)
-                  (.build)
-                  (.verify))
-          apk (ByteArrayApkFile. apk-data)]
-      (.delete fd)
-      {:apk apk 
-       :manifest (get-manifest apk)
-       :dex (get-dex apk)
-       :verification veri})))
+  (let [apk (ByteArrayApkFile. apk-data)]
+    {:manifest (get-manifest apk)
+     :dex (get-dex apk)
+     :verification (verify apk-data)}))
