@@ -76,7 +76,7 @@ public class ApacheHttpClientAdapter extends HttpClientAdapter {
             if (response.getStatusLine().getStatusCode() == 200) {
                 return ByteStreams.toByteArray(response.getEntity().getContent());
             } else {
-                throw new ResponseException(response);
+                throw new RuntimeException();
             }
         }
     }
