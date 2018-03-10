@@ -3,8 +3,10 @@
            [clojure.java.io :as io]
            [co.momomo.soup :refer :all]
            [co.momomo.appsearch.html-reader :refer [xz-pages-from-url]]
+           [co.momomo.appsearch.apk :as apk]
            [co.momomo.cereal :as cereal]
-           [cheshire.core :as json])
+           [clojure.data.fressian :as fress]
+           [clj-http.client :as http])
   (import [org.jsoup Jsoup]
           [org.jsoup.nodes Element]
           [java.io InputStream OutputStream]
@@ -131,5 +133,51 @@
 
 (defn parse-pages!
   [outf]
-  (cereal/par-process-into-file!
-    (mapcat parsed-pages) urls outf))
+  (cereal/par-process-into-file! urls
+    (mapcat parsed-pages) outf))
+
+(defn extract-download-url
+  [page]
+  (->
+    page
+    (Jsoup/parse)
+    (select-attr "src"
+      (any-pos
+        (%and (tag "iframe") (id "iframe_download"))))
+    (first)))
+
+(defn download-apk
+  [app-meta]
+  (->
+    (str "https://apkpure.com" (:download_url app-meta))
+    (http/get)
+    (:body)
+    (extract-download-url)
+    (http/get {:as :byte-array})
+    (:body)))
+
+(defn download-and-process-apps!
+  [apps outf-basename]
+  (let [map2 (fn [a b] (map b a))]
+    (->
+      apps
+      (map2 (fn [v] {:url (:download_url v) :meta v}))
+      (cereal/download {} 10)
+      (cereal/queue-seq)
+      (map2
+        (fn [v] {:meta (:meta v)
+                 :url (extract-download-url (:body (:result v)))}))
+      (cereal/download {:as :byte-array} 10)
+      (cereal/queue-seq)
+      (cereal/parrun
+        (fn [core-id apks]
+          (with-open [outs (->
+                            (str outf-basename "-" core-id ".fressian.xz")
+                            (java.io.File.)
+                            (io/output-stream)
+                            (XZOutputStream. (LZMA2Options.)))]
+            (let [w (fress/create-writer outs)]
+              (doseq [row apks]
+                (let [apk (apk/load-apk (:body (:result row)))]
+                  (fress/write-object outs
+                    {:meta (:meta row) :apk apk}))))))))))

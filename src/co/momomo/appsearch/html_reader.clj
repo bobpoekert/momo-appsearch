@@ -16,5 +16,4 @@
 
 (defn xz-pages-from-url
   [url]
-  (prn url)
   (pages (:body (http/get url {:as :stream}))))
