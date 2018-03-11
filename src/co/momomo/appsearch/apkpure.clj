@@ -158,15 +158,19 @@
 
 (defn download-and-process-apps!
   [apps outf-basename]
-  (let [map2 (fn [a b] (map b a))]
+  (let [map2 (fn [a b] (map b a))
+	filter2 (fn [a b] (filter b a))]
     (->
       apps
-      (map2 (fn [v] {:url (:download_url v) :meta v}))
+      (map2 (fn [v] {:url (str "https://apkpure.com" (:download_url v)) :meta v}))
       (cereal/download {} 10)
       (cereal/queue-seq)
       (map2
-        (fn [v] {:meta (:meta v)
-                 :url (extract-download-url (:body (:result v)))}))
+        (fn [v] 
+          (prn (:title (:meta v)))
+          {:meta (:meta v)
+           :url (extract-download-url (:body (:result v)))}))
+      (filter2 #(not (nil? (:url %))))
       (cereal/download {:as :byte-array} 10)
       (cereal/queue-seq)
       (cereal/parrun
@@ -178,6 +182,11 @@
                             (XZOutputStream. (LZMA2Options.)))]
             (let [w (fress/create-writer outs)]
               (doseq [row apks]
-                (let [apk (apk/load-apk (:body (:result row)))]
-                  (fress/write-object outs
-                    {:meta (:meta row) :apk apk}))))))))))
+                (prn (:title (:meta row)))
+                (if (:error row)
+                  (prn (:error row))
+                  (try
+                    (let [apk (apk/load-apk (:body (:result row)))]
+                      (fress/write-object w
+                        {:meta (:meta row) :apk apk}))
+                    (catch Throwable e (prn e))))))))))))

@@ -44,7 +44,7 @@
         (thread "parrun generator"
           (partial into-queue! inq inp)))
       (dotimes [core core-cnt]
-        (thread "par-process-into-file! worker"
+        (thread "parrun worker"
           (fn []
             (runner core (queue-seq inq))
             (swap! done-cnt inc)
@@ -93,11 +93,14 @@
             (let [response! (partial response! (:meta url))]
               (while (or
                       (not (nil? (.peek outp)))
-                      (>= @running-count 100))
+                      (>= @running-count 10))
                 (Thread/sleep 10))
               (swap! running-count inc)
-              (http/get (:url url) (assoc http-opts :async? true)
-                response! response!)))
+	      (try
+            (http/get (:url url) (assoc http-opts :async? true)
+              response! response!)
+            (catch Throwable e
+              (.put outp {:meta (:meta url) :error e})))))
           (finally (close-queue! outp)))))
     outp)) 
     
