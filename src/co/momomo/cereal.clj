@@ -32,27 +32,22 @@
     (.start)))
 
 (defn parrun
-  ([inp runner]
-    (parrun inp runner (fn [] nil)))
-  ([inp runner callback]
-    (let [inq (if (instance? BlockingQueue inp)
-                inp
-                (LinkedBlockingQueue. 10))
-          done-latch (promise)
-          done-cnt (atom 0)
-          core-cnt (dec (.availableProcessors (Runtime/getRuntime)))]
-      (when-not (identical? inp inq) 
-        (thread "parrun generator"
-          (partial into-queue! inq inp)))
-      (dotimes [core core-cnt]
-        (thread "parrun worker"
-          (fn []
+  [inp runner]
+  (let [inq (if (instance? BlockingQueue inp)
+              inp
+              (LinkedBlockingQueue. 10))
+        core-cnt (dec (.availableProcessors (Runtime/getRuntime)))
+        done-latch (java.util.concurrent.CountDownLatch. core-cnt)]
+    (when-not (identical? inp inq) 
+      (thread "parrun generator"
+        (partial into-queue! inq inp)))
+    (dotimes [core core-cnt]
+      (thread "parrun worker"
+        (fn []
+          (try
             (runner core (queue-seq inq))
-            (swap! done-cnt inc)
-            (when (>= @done-cnt core-cnt)
-              (deliver done-latch true)
-              (callback)))))
-      done-latch)))
+            (finally (.countDown done-latch))))))
+    done-latch))
 
 (defn parmap
   [inp transducer]

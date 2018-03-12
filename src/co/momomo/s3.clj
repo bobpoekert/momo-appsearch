@@ -2,9 +2,9 @@
   (require [clojure.java.io :as io]
            [clojure.string :as ss])
   (import [co.momomo S3UploadOutputStream]
-          [java.io InputStream OutputStream]
+          [java.io InputStream OutputStream ByteArrayInputStream]
           [com.amazonaws.services.s3 AmazonS3Client]
-          [com.amazonaws.services.s3.model GetObjectRequest]
+          [com.amazonaws.services.s3.model GetObjectRequest PutObjectRequest ObjectMetadata]
           [com.amazonaws.auth
             BasicAWSCredentials AWSStaticCredentialsProvider]))
 
@@ -31,3 +31,12 @@
 (defn ^OutputStream output-stream
   [^String bucket ^String k]
   (S3UploadOutputStream/create @s3-client bucket k))
+
+(defn upload!
+  ([^String bucket ^String k ^InputStream ins data-size]
+    (.putObject
+      @s3-client
+      (PutObjectRequest. bucket k ins
+        (doto (ObjectMetadata.) (.setContentLength data-size)))))
+  ([^String bucket ^String k ^bytes data]
+    (upload! bucket k (ByteArrayInputStream. data) (alength data))))

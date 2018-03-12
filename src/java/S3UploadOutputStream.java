@@ -9,6 +9,8 @@ import com.amazonaws.services.s3.model.InitiateMultipartUploadRequest;
 import com.amazonaws.services.s3.model.InitiateMultipartUploadResult;
 import com.amazonaws.services.s3.model.PartETag;
 import com.amazonaws.services.s3.model.UploadPartRequest;
+import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.amazonaws.services.s3.model.PutObjectRequest;
 
 import java.io.OutputStream;
 import java.io.BufferedOutputStream;
@@ -18,9 +20,6 @@ import java.util.ArrayList;
 public class S3UploadOutputStream extends BaseOutputStream {
 
     AmazonS3 s3Client;
-    ArrayList<PartETag> partETags;
-    InitiateMultipartUploadRequest initRequest;
-    InitiateMultipartUploadResult initResult;
     String bucket;
     String key;
     int partNumber;
@@ -29,16 +28,13 @@ public class S3UploadOutputStream extends BaseOutputStream {
     public static OutputStream create(AmazonS3 client, String bucket, String key) {
         return new BufferedOutputStream(
                 new S3UploadOutputStream(client, bucket, key),
-                5 * 1000 * 1000);
+                20 * 1000 * 1000);
     }
 
     S3UploadOutputStream(AmazonS3 client, String bucket, String key) {
         this.s3Client = client;
         this.bucket = bucket;
         this.key = key;
-        this.partETags = new ArrayList<PartETag>();
-        this.initRequest = new InitiateMultipartUploadRequest(bucket, key);
-        this.initResult = client.initiateMultipartUpload(initRequest);
         this.partNumber = 1;
         this.closed = false;
     }
@@ -48,34 +44,18 @@ public class S3UploadOutputStream extends BaseOutputStream {
     }
 
     public synchronized void write(byte[] arr) {
-        UploadPartRequest req = new UploadPartRequest()
-            .withBucketName(this.bucket)
-            .withKey(this.key)
-            .withUploadId(this.initResult.getUploadId())
-            .withPartNumber(this.partNumber)
-            .withInputStream(new ByteArrayInputStream(arr))
-            .withPartSize(arr.length);
-        this.partETags.add(this.s3Client.uploadPart(req).getPartETag());
+        ObjectMetadata meta = new ObjectMetadata();
+        meta.setContentLength(arr.length);
+        this.s3Client.putObject(new PutObjectRequest(
+                    this.bucket, String.format("%s-%d", this.key, this.partNumber),
+                    new ByteArrayInputStream(arr),
+                    meta));
         this.partNumber++;
     }
 
     public synchronized void close() {
         if (this.closed) return;
-        CompleteMultipartUploadRequest compRequest = new 
-            CompleteMultipartUploadRequest(
-                    this.bucket,
-                    this.key,
-                    this.initResult.getUploadId(), 
-                    this.partETags);
-        this.s3Client.completeMultipartUpload(compRequest);
         this.closed = true;
-    }
-
-    protected void finalize() {
-        if (!this.closed) {
-            s3Client.abortMultipartUpload(new AbortMultipartUploadRequest(
-                this.bucket, this.key, this.initResult.getUploadId()));
-        }
     }
 
 }

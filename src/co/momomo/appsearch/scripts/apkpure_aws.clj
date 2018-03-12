@@ -5,4 +5,3 @@
 (defn -main
   [& args]
   (apply apkp/download-and-process-apps-s3! args))
-    
