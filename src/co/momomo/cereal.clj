@@ -2,7 +2,8 @@
   (require [clojure.data.fressian :as fress]
            [clojure.java.io :as io]
            [clj-http.client :as http])
-  (import [java.util.concurrent LinkedBlockingQueue BlockingQueue]))
+  (import [java.util.concurrent LinkedBlockingQueue BlockingQueue]
+          [org.tukaani.xz XZInputStream]))
 
 (defn queue-seq
   [^LinkedBlockingQueue inp]
@@ -80,6 +81,14 @@
 (defn data-seq
   [fd]
   (inner-data-seq (fress/create-reader (io/input-stream fd))))
+
+(defn xz-data-seq
+  [fd]
+  (->
+    (io/input-stream fd)
+    (XZInputStream.)
+    (fress/create-reader)
+    (inner-data-seq)))
 
 (defn download
   [urls http-opts queue-size]
