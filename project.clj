@@ -5,6 +5,8 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :java-source-paths ["src/java"]
+  :main co.momomo.appsearch.scripts.apkpure-aws
+  :aot :all
   :profiles {:dev {:dependencies [[inspector-jay "0.3"]]}}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.jsoup/jsoup "1.11.2"]
@@ -23,4 +25,5 @@
                  [net.dongliu/apk-parser "2.5.3"]
                  [org.clojure/data.fressian "0.2.1"]
                  [org.smali/dexlib2 "2.2.3"]
-                 [proteus "0.1.6"]])
+                 [proteus "0.1.6"]
+                 [com.amazonaws/aws-java-sdk-s3 "1.11.292"]])

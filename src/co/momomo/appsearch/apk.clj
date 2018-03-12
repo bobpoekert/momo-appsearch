@@ -274,4 +274,5 @@
   (let [apk (ByteArrayApkFile. apk-data)]
     {:manifest (get-manifest apk)
      :dex (get-dex apk)
+     :manifest_xml (.getManifestXml apk)
      :verification (verify apk-data)}))

@@ -71,9 +71,11 @@
 
 (defn- inner-data-seq
   [ins]
-  (cons
-    (fress/read-object ins)
-    (lazy-seq (inner-data-seq ins))))
+  (try
+    (cons
+      (fress/read-object ins)
+      (lazy-seq (inner-data-seq ins)))
+    (catch java.io.EOFException e nil)))
 
 (defn data-seq
   [fd]
@@ -96,11 +98,12 @@
                       (>= @running-count 10))
                 (Thread/sleep 10))
               (swap! running-count inc)
-	      (try
-            (http/get (:url url) (assoc http-opts :async? true)
-              response! response!)
-            (catch Throwable e
-              (.put outp {:meta (:meta url) :error e})))))
+              (try
+                (http/get (:url url) (assoc http-opts :async? true)
+                  response! response!)
+                (catch Throwable e
+                  (.put outp {:meta (:meta url) :error e})))))
+          (catch Exception e (prn e))
           (finally (close-queue! outp)))))
     outp)) 
     

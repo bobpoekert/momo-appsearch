@@ -6,11 +6,13 @@
            [co.momomo.appsearch.apk :as apk]
            [co.momomo.cereal :as cereal]
            [clojure.data.fressian :as fress]
-           [clj-http.client :as http])
+           [clj-http.client :as http]
+           [co.momomo.s3 :as s3])
   (import [org.jsoup Jsoup]
           [org.jsoup.nodes Element]
           [java.io InputStream OutputStream]
-          [org.tukaani.xz XZOutputStream LZMA2Options]
+          [org.tukaani.xz XZOutputStream LZMA2Options XZInputStream]
+          [co.momomo PipelineOutputStream]
           [com.joestelmach.natty Parser DateGroup]))
 
 (set! *warn-on-reflection* true)
@@ -157,7 +159,7 @@
     (:body)))
 
 (defn download-and-process-apps!
-  [apps outf-basename]
+  [apps outs-generator]
   (let [map2 (fn [a b] (map b a))
 	filter2 (fn [a b] (filter b a))]
     (->
@@ -175,18 +177,44 @@
       (cereal/queue-seq)
       (cereal/parrun
         (fn [core-id apks]
-          (with-open [outs (->
-                            (str outf-basename "-" core-id ".fressian.xz")
-                            (java.io.File.)
-                            (io/output-stream)
-                            (XZOutputStream. (LZMA2Options.)))]
-            (let [w (fress/create-writer outs)]
-              (doseq [row apks]
-                (prn (:title (:meta row)))
-                (if (:error row)
-                  (prn (:error row))
-                  (try
-                    (let [apk (apk/load-apk (:body (:result row)))]
-                      (fress/write-object w
-                        {:meta (:meta row) :apk apk}))
-                    (catch Throwable e (prn e))))))))))))
+          (let [new-outs (fn [ctr]
+                          (->
+                            ^OutputStream (outs-generator (str core-id "-" ctr))
+                            (XZOutputStream. (LZMA2Options.))))]
+            (loop [ctr 0 apks apks ^OutputStream outs (new-outs 0) w nil]
+              (prn ctr)
+              (if (nil? apks)
+                (.close outs)
+                (let [w (or w (fress/create-writer outs))
+                      row (first apks)]
+                  (prn (:title (:meta row)))
+                  (if (:error row)
+                    (prn (:error row))
+                    (try
+                      (let [apk (apk/load-apk (:body (:result row)))]
+                        (fress/write-object w
+                          {:meta (:meta row) :apk apk}))
+                      (catch Throwable e (prn e))))
+                  (if (< ctr 100)
+                    (recur (inc ctr) (rest apks) outs w)
+                    (let [o (new-outs ctr)]
+                      (.close outs)
+                      (recur 0 (rest apks) o (fress/create-writer o)))))))))))))
+
+(defn download-and-process-apps-localfs!
+  [apps basename]
+  (download-and-process-apps! apps
+    (fn [core-id]
+      (->
+        (str basename "-" core-id ".fressian.xz")
+        (java.io.File.)
+        (io/output-stream)))))
+
+(defn download-and-process-apps-s3!
+  [inp-bucket inp-key outp-bucket outp-basename]
+  (let [ins (s3/input-stream inp-bucket inp-key)]
+    (download-and-process-apps!
+      (cereal/data-seq (XZInputStream. ins))
+      (fn [core-id]
+        (s3/output-stream outp-bucket
+          (str outp-basename "-" core-id ".fressian.xz"))))))
