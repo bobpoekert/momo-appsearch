@@ -75,11 +75,14 @@
                           (any-pos
                             (path
                               (%and (tag "div") (has-class "box"))
-                              (%and (tag "dl") (has-class "ny-dl"))))))]
+                              (%and (tag "dl") (has-class "ny-dl"))))))
+        url (first (select-attr tree "content" (%and (tag "meta") (kv "property" "og:url"))))]
       {:thumbnail_url (first (select-attr tree "src"
                         (path
                           (%and (tag "div") (has-class "icon"))
                           (tag "img"))))
+      :url url
+      :artifact_name (last (ss/split "/" url))
       :title (select-strip title-box
               (path
                 (%and (tag "div") (has-class "title-like"))
@@ -106,8 +109,7 @@
                           (id "describe")
                           (tag "div")
                           (tag "div")))
-                      (map get-text)
-                      (ss/join "\n"))
+                      (map get-text))
                     (catch Exception e
                       (select-strip tree
                         (any-pos
@@ -158,63 +160,3 @@
     (extract-download-url)
     (http/get {:as :byte-array})
     (:body)))
-
-(defn download-and-process-apps-s3!
-  [inp-bucket inp-key outp-bucket outp-basename]
-  (let [map2 (fn [a b] (map b a))
-        filter2 (fn [a b] (filter b a))
-        outq (LinkedBlockingQueue. 2)
-        ^java.util.concurrent.CountDownLatch done-latch
-          (->
-            (s3/input-stream inp-bucket inp-key)
-            (XZInputStream.)
-            (cereal/data-seq)
-            (map2 (fn [v] {:url (str "https://apkpure.com" (:download_url v)) :meta v}))
-            (cereal/download {} 10)
-            (cereal/queue-seq)
-            (map2
-              (fn [v] 
-                {:meta (:meta v)
-                 :url (extract-download-url (:body (:result v)))}))
-            (filter2 #(not (nil? (:url %))))
-            (cereal/download {:as :byte-array} 10)
-            (cereal/queue-seq)
-            (cereal/parrun
-              (fn [core-id apks]
-                (loop [ctr 0 outw nil ^ByteArrayOutputStream bao nil ^OutputStream outs nil apks apks]
-                  (cond
-                    (nil? apks) (do
-                                  (.close outs)
-                                  (.put outq (.toByteArray bao))
-                                  nil)
-                    (> ctr 100) (do 
-                                  (.close outs)
-                                  (.put outq (.toByteArray bao))
-                                  (recur 0 nil nil nil apks))
-                    (nil? outw) (let [bao (ByteArrayOutputStream.)
-                                      outs (-> bao (XZOutputStream. (LZMA2Options.)))]
-                                  (recur 0
-                                    (fress/create-writer outs)
-                                    bao outs apks))
-                    :else (let [[row & rst] apks]
-                            (prn (:title (:meta row)))
-                            (if (:error row)
-                              (prn (:error row))
-                              (try
-                                (let [apk (apk/load-apk (:body (:result row)))]
-                                  (fress/write-object outw
-                                    {:meta (:meta row) :apk apk}))
-                                (catch Throwable e (prn e))))
-                            (recur (inc ctr) outw bao outs rst)))))))]
-    (loop [ctr 0]
-      (let [v (.poll outq 100 TimeUnit/MILLISECONDS)]
-        (if (nil? v)
-          (if (.await done-latch 100 TimeUnit/MILLISECONDS)
-            nil
-            (recur ctr))
-          (do
-            (s3/upload! outp-bucket
-              (str outp-basename "-" ctr)
-              v)
-            (recur (inc ctr))))))))
-

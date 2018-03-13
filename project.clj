@@ -5,9 +5,13 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :java-source-paths ["src/java"]
-  :main co.momomo.appsearch.scripts.apkpure-aws
-  :aot :all
-  :profiles {:dev {:dependencies [[inspector-jay "0.3"]]}}
+  :profiles {:dev {:dependencies [[inspector-jay "0.3"]]}
+             :apkpure-aws {
+                            :main co.momomo.appsearch.scripts.apkpure-aws
+                            :aot :all}
+             :apkpure-extract {
+                                :main co.momomo.appsearch.scripts.apkpure-extract
+                                :aot :all}}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.jsoup/jsoup "1.11.2"]
                  [com.github.yeriomin/play-store-api "0.32"]

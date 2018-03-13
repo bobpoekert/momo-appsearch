@@ -2,7 +2,8 @@
   (require [clojure.data.fressian :as fress]
            [clojure.java.io :as io]
            [clj-http.client :as http])
-  (import [java.util.concurrent LinkedBlockingQueue BlockingQueue]
+  (import [java.util.concurrent
+            LinkedBlockingQueue BlockingQueue CountDownLatch TimeUnit]
           [org.tukaani.xz XZInputStream]))
 
 (defn queue-seq
@@ -32,38 +33,54 @@
     (.start)))
 
 (defn parrun
-  [inp runner]
-  (let [inq (if (instance? BlockingQueue inp)
-              inp
-              (LinkedBlockingQueue. 10))
-        core-cnt (dec (.availableProcessors (Runtime/getRuntime)))
-        done-latch (java.util.concurrent.CountDownLatch. core-cnt)]
-    (when-not (identical? inp inq) 
-      (thread "parrun generator"
-        (partial into-queue! inq inp)))
-    (dotimes [core core-cnt]
-      (thread "parrun worker"
-        (fn []
-          (try
-            (runner core (queue-seq inq))
-            (finally (.countDown done-latch))))))
-    done-latch))
+  ([inp opts runner]
+    (let [inq (if (instance? BlockingQueue inp)
+                inp
+                (LinkedBlockingQueue. 10))
+          core-cnt (:core-cnt opts)
+          core-cnt (if (nil? core-cnt)
+                    (dec (.availableProcessors (Runtime/getRuntime)))
+                    core-cnt)
+          done-latch (CountDownLatch. core-cnt)]
+      (when-not (identical? inp inq) 
+        (thread "parrun generator"
+          (partial into-queue! inq inp)))
+      (dotimes [core core-cnt]
+        (thread "parrun worker"
+          (fn []
+            (try
+              (runner core (queue-seq inq))
+              (finally
+                (do
+                  (.countDown done-latch)
+                  (when (and
+                          (:callback opts)
+                          (.await done-latch 1 TimeUnit/MILLISECONDS))
+                    ((:callback opts)))))))))
+      done-latch))
+  ([inp runner]
+    (parrun inp {} runner)))
 
 (defn parmap
-  [inp transducer]
-  (let [^LinkedBlockingQueue outq (LinkedBlockingQueue. 10)]
-    (parrun inp
-      (fn [core-id inp]
-        (transduce transducer
-          (fn [_ v] (.put outq v)) nil inp))
-      (partial close-queue! outq))
-    (queue-seq outq)))
+  ([inp opts transducer]
+    (let [^LinkedBlockingQueue outq (LinkedBlockingQueue. 10)
+          ^CountDownLatch latch
+            (parrun inp
+              (assoc opts :callback (partial close-queue! outq))
+              (fn [core-id inp]
+                (transduce transducer
+                  (fn [_ v] (.put outq v)) nil inp)))]
+      (queue-seq outq)))
+  ([inp transducer]
+    (parmap inp {} transducer)))
 
 (defn par-process-into-file!
-  [inp transducer outf]
-  (with-open [douts (fress/create-writer (io/output-stream outf))]
-    (doseq [row (parmap inp transducer)]
-      (fress/write-object douts row))))
+  ([inp opts transducer outf]
+    (with-open [douts (fress/create-writer (io/output-stream outf))]
+      (doseq [row (parmap inp opts transducer)]
+        (fress/write-object douts row))))
+  ([inp transducer outf]
+    (par-process-into-file! inp {} transducer outf)))
 
 (defn- inner-data-seq
   [ins]
