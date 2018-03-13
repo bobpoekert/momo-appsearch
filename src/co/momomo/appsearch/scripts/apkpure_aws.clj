@@ -1,11 +1,20 @@
 (ns co.momomo.appsearch.scripts.apkpure-aws
   (:gen-class)
   (require [co.momomo.appsearch.apkpure :as apkp]
+           [co.momomo.appsearch.apk4fun :as apk4]
            [co.momomo.cereal :as cereal]
            [co.momomo.s3 :as s3]
-           [co.momomo.appsearch.apk :as apk])
-  (import [java.util.concurrent LinkedBlockingQueue]
+           [co.momomo.appsearch.apk :as apk]
+           [clojure.data.fressian :as fress])
+  (import [java.util.concurrent LinkedBlockingQueue TimeUnit]
+          [org.tukaani.xz XZInputStream XZOutputStream LZMA2Options]
           [java.io ByteArrayOutputStream OutputStream]))
+
+(defn get-download-url
+  [mv]
+  (or
+    (apk4/artifact-download-url (:artifact_name mv))
+    (str "https://apkpure.com" (:download_url mv))))
 
 (defn download-and-process-apps-s3!
   [inp-bucket inp-key outp-bucket outp-basename]
@@ -18,14 +27,7 @@
             (s3/input-stream inp-bucket inp-key)
             (XZInputStream.)
             (cereal/data-seq)
-            (map2 (fn [v] {:url (str "https://apkpure.com" (:download_url v)) :meta v}))
-            (cereal/download download-opts 10)
-            (cereal/queue-seq)
-            (map2
-              (fn [v] 
-                (prn (:title (:meta v)) "?")
-                {:meta (:meta v)
-                 :url (extract-download-url (:body (:result v)))}))
+            (cereal/parmap {:core-count 50} (map get-download-url))
             (filter2 #(not (nil? (:url %))))
             (cereal/download (merge download-opts {:as :byte-array}) 100)
             (cereal/queue-seq)

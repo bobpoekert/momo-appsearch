@@ -98,36 +98,38 @@
     (artifacts-meta)))
 
 (defn artifact-download-url
-  [artifact-name] 
-  (let [id (->
-            (http/get (info-page-url artifact-name))
-            (:body)
-            (Jsoup/parse)
-            (app-meta)
-            (:apk4fun_id))
-        filter2 (fn [a b] (filter b a))
-        artifacts (get-artifacts-meta id)
-        rapid-url (->>
-                    artifacts
-                    (map #(get-in % [:file_urls "rapidgator"]))
-                    (filter (complement nil?))
-                    (first))
-        rapid-url (->
-                    (str "https://apk4fun.com" rapid-url)
-                    (http/get)
-                    (:body)
-                    (Jsoup/parse)
-                    (select-attr "href"
-                      (any-pos
-                        (%and (tag "a")
-                              (kv "title" "Download from Rapidgator"))))
-                    (first)
-                    (URL.)
-                    (.getQuery)
-                    (ss/split #"&")
-                    (filter2 (fn [^String v] (.startsWith v "l=")))
-                    (first)
-                    (ss/split #"=")
-                    ^String (second)
-                    (java.net.URLDecoder/decode))]
-    (rapidgator-url rapid-url)))
+  [artifact-name]
+  (try
+    (let [id (->
+              (http/get (info-page-url artifact-name))
+              (:body)
+              (Jsoup/parse)
+              (app-meta)
+              (:apk4fun_id))
+          filter2 (fn [a b] (filter b a))
+          artifacts (get-artifacts-meta id)
+          rapid-url (->>
+                      artifacts
+                      (map #(get-in % [:file_urls "rapidgator"]))
+                      (filter (complement nil?))
+                      (first))
+          rapid-url (->
+                      (str "https://apk4fun.com" rapid-url)
+                      (http/get)
+                      (:body)
+                      (Jsoup/parse)
+                      (select-attr "href"
+                        (any-pos
+                          (%and (tag "a")
+                                (kv "title" "Download from Rapidgator"))))
+                      (first)
+                      (URL.)
+                      (.getQuery)
+                      (ss/split #"&")
+                      (filter2 (fn [^String v] (.startsWith v "l=")))
+                      (first)
+                      (ss/split #"=")
+                      ^String (second)
+                      (java.net.URLDecoder/decode))]
+      (rapidgator-url rapid-url))
+    (catch Exception e nil)))

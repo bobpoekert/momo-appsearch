@@ -63,13 +63,12 @@
 
 (defn parmap
   ([inp opts transducer]
-    (let [^LinkedBlockingQueue outq (LinkedBlockingQueue. 10)
-          ^CountDownLatch latch
-            (parrun inp
-              (assoc opts :callback (partial close-queue! outq))
-              (fn [core-id inp]
-                (transduce transducer
-                  (fn [_ v] (.put outq v)) nil inp)))]
+    (let [^LinkedBlockingQueue outq (LinkedBlockingQueue. 10)]
+      (parrun inp
+        (assoc opts :callback (partial close-queue! outq))
+        (fn [core-id inp]
+          (transduce transducer
+            (fn [_ v] (.put outq v)) nil inp)))
       (queue-seq outq)))
   ([inp transducer]
     (parmap inp {} transducer)))
