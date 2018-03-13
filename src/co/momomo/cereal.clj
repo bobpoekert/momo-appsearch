@@ -75,8 +75,8 @@
     (parmap inp {} transducer)))
 
 (defn par-process-into-file!
-  ([inp opts transducer outf]
-    (with-open [douts (fress/create-writer (io/output-stream outf))]
+  ([inp opts transducer outs]
+    (let [douts (fress/create-writer outs)]
       (doseq [row (parmap inp opts transducer)]
         (fress/write-object douts row))))
   ([inp transducer outf]
