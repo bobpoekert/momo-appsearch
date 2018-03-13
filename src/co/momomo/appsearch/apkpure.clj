@@ -82,7 +82,7 @@
                           (%and (tag "div") (has-class "icon"))
                           (tag "img"))))
       :url url
-      :artifact_name (last (ss/split "/" url))
+      :artifact_name (if url (last (ss/split url #"/")) nil)
       :title (select-strip title-box
               (path
                 (%and (tag "div") (has-class "title-like"))
@@ -138,8 +138,9 @@
 
 (defn parse-pages!
   [outf]
-  (cereal/par-process-into-file! urls
-    (mapcat parsed-pages) outf))
+  (with-open [outs (io/output-stream outf)]
+    (cereal/par-process-into-file! urls
+      (mapcat parsed-pages) outs)))
 
 (defn extract-download-url
   [page]
