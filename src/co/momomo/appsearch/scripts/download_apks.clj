@@ -50,12 +50,14 @@
 
 (defn download-apps!
   [inp-bucket inp-key outp-bucket]
-  (let [seen (atom (into #{} (s3/list-bucket outp-bucket)))]
+  (let [seen (atom (into #{} (s3/list-bucket outp-bucket)))
+        cores (System/getProperty "cores")
+        cores (if cores (Integer/parseInt cores) 800)]
     (->
       (s3/input-stream inp-bucket inp-key)
       (XZInputStream.)
       (cereal/data-seq)
-      (cr/crawl {:core-cnt 800} (requester-fns outp-bucket seen)))))
+      (cr/crawl {:core-cnt cores} (requester-fns outp-bucket seen)))))
 
 (defn -main
   [& args]

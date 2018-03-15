@@ -82,12 +82,10 @@
 
 (defn build-requester-state
   [requester-fns]
-  (let [res (PriorityBlockingQueue.
-              (* 2 (count requester-fns) (count @proxies))
-              (comparator (fn [a b] (if (< (:score a) (:score b)) -1 1))))]
+  (let [res (LinkedBlockingQueue.)]
     (doseq [thunk requester-fns
             [proxy-host proxy-port] @proxies]
-      (.add res
+      (.put res
         (->Requester thunk 0 0
           {:headers {"User-Agent" (pick-random @user-agents)}
            :proxy-host proxy-host :proxy-port proxy-port
@@ -95,7 +93,7 @@
            :retry-handler (fn [ex try-cnt ctx] false)}
           (cookies/cookie-store) 0.001)))
     (doseq [thunk requester-fns]
-      (.add res
+      (.put res
         (->Requester thunk 0 0
           {:headers {"User-Agent" (pick-random @user-agents)}
            :conn-timeout conn-timeout
@@ -104,7 +102,7 @@
     res))
      
 (defn run-request
-  [^PriorityBlockingQueue requesters resource]
+  [^LinkedBlockingQueue requesters resource]
   ((fn looper [requester retries]
     (prn [(:success-count requester) (:failure-count requester)])
     (binding [*http-opts* (:http-opts requester)
@@ -114,7 +112,7 @@
                   (catch Exception e (prn (.getMessage e)) ::fail))]
         (if (= res ::fail)
           (do
-            (.add requesters
+            (.put requesters
               (-> requester
                 (assoc :failure-count (inc (:failure-count requester)))
                 (update-requester-score)))
@@ -122,7 +120,7 @@
               (looper (.take requesters) (inc retries))
               false))
           (do
-            (.add requesters
+            (.put requesters
               (-> requester
                 (assoc :success-count (inc (:success-count requester)))
                 (update-requester-score)))
