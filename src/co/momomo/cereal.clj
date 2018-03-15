@@ -23,7 +23,8 @@
   [^LinkedBlockingQueue q ins]
   (do
     (doseq [v ins]
-      (.put q v))
+      (when-not (nil? v)
+        (.put q v)))
     (close-queue! q)))
 
 (defn thread
@@ -68,7 +69,9 @@
         (assoc opts :callback (partial close-queue! outq))
         (fn [core-id inp]
           (transduce transducer
-            (fn [_ v] (.put outq v)) nil inp)))
+            (fn [_ v] 
+              (when-not (nil? v)
+                (.put outq v))) nil inp)))
       (queue-seq outq)))
   ([inp transducer]
     (parmap inp {} transducer)))

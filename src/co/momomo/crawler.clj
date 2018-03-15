@@ -6,7 +6,7 @@
            [clojure.data.xml :as xml]
            [clojure.java.io :as io]
            [clojure.string :as ss])
-  (import [java.util.concurrent PriorityBlockingQueue]
+  (import [java.util.concurrent PriorityBlockingQueue LinkedBlockingQueue]
           [java.net Socket InetSocketAddress]))
 
 (def user-agents
@@ -31,7 +31,7 @@
 (def proxies
   (delay
     (->>
-      (client/get "http://filefab.com/api.php?l=Od9bhDRsZz5XCq2_waX09Wcll-DtXOXvHJNe68cZblE")
+      (client/get "http://filefab.com/api.php?l=4YlFRFXacsdxd7X3Tt8nz-idps0TbEXOUZd-CpX1XuE")
       (:body)
       (ss/split-lines)
       (filter (fn [^String v] (> (.indexOf v ":") -1)))
@@ -69,8 +69,8 @@
 (defn requester-score
   [requester]
   (*
-    (Math/random)
-    (+ 0.001
+    (* (Math/random) 0.5) ; epsilon
+    (+ 0.0001 ; anti-vanising constant
       (/ (:success-count requester)
          (+ (:success-count requester) (:failure-count requester))))))
 
@@ -78,17 +78,27 @@
   [requester]
   (assoc requester :score (requester-score requester)))
 
+(def conn-timeout 500)
+
 (defn build-requester-state
   [requester-fns]
   (let [res (PriorityBlockingQueue.
-              (* (count requester-fns) (count @proxies))
-              (comparator (fn [a b] (- (:score b) (:score a)))))]
+              (* 2 (count requester-fns) (count @proxies))
+              (comparator (fn [a b] (if (< (:score a) (:score b)) -1 1))))]
     (doseq [thunk requester-fns
             [proxy-host proxy-port] @proxies]
       (.add res
         (->Requester thunk 0 0
           {:headers {"User-Agent" (pick-random @user-agents)}
            :proxy-host proxy-host :proxy-port proxy-port
+           :conn-timeout conn-timeout :socket-timeout 5000
+           :retry-handler (fn [ex try-cnt ctx] false)}
+          (cookies/cookie-store) 0.001)))
+    (doseq [thunk requester-fns]
+      (.add res
+        (->Requester thunk 0 0
+          {:headers {"User-Agent" (pick-random @user-agents)}
+           :conn-timeout conn-timeout
            :retry-handler (fn [ex try-cnt ctx] false)}
           (cookies/cookie-store) 0.001)))
     res))
@@ -96,11 +106,12 @@
 (defn run-request
   [^PriorityBlockingQueue requesters resource]
   ((fn looper [requester retries]
+    (prn [(:success-count requester) (:failure-count requester)])
     (binding [*http-opts* (:http-opts requester)
               hc/*cookie-store* (:cookies requester)]
       (let [res (try
                   ((:thunk requester) resource)
-                  (catch Exception e ::fail))]
+                  (catch Exception e (prn (.getMessage e)) ::fail))]
         (if (= res ::fail)
           (do
             (.add requesters

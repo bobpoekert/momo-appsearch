@@ -4,7 +4,8 @@
   (import [co.momomo S3UploadOutputStream]
           [java.io InputStream OutputStream ByteArrayInputStream]
           [com.amazonaws.services.s3 AmazonS3Client]
-          [com.amazonaws.services.s3.model GetObjectRequest PutObjectRequest ObjectMetadata]
+          [com.amazonaws.services.s3.model GetObjectRequest PutObjectRequest
+            ObjectMetadata ObjectListing S3ObjectSummary]
           [com.amazonaws.auth
             BasicAWSCredentials AWSStaticCredentialsProvider]))
 
@@ -50,3 +51,30 @@
     (prn [bucket k content-length])
     (with-open [ins (io/input-stream (:body response))]
       (upload! bucket k ins content-length))))
+
+(defn- inner-list-bucket
+  [s3 listing]
+  (if (.isTruncated listing)
+    (concat
+      (.getObjectSummaries (.listNextBatchOfObjects s3 listing))
+      (lazy-seq (inner-list-bucket s3 listing)))
+    (list)))
+
+(defn list-bucket-summaries
+  ([bucket prefix]
+    (let [s3 @s3-client
+          ^ObjectListing listing (.listObjects s3 bucket prefix)
+          ^java.util.List summaries (.getObjectSummaries listing)]
+      (loop [listing listing]
+        (when (.isTruncated listing)
+          (let [listing (.listNextBatchOfObjects s3 listing)]
+            (.addAll summaries (.getObjectSummaries listing))
+            (recur listing))))
+      summaries))
+  ([bucket] (list-bucket-summaries bucket "")))
+
+
+(defn list-bucket
+  [bucket]
+  (map (fn [^S3ObjectSummary row] (.getKey row))
+    (list-bucket-summaries bucket)))

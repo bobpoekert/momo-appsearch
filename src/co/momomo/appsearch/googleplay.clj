@@ -5,7 +5,7 @@
           [java.util.concurrent BlockingQueue LinkedBlockingQueue]
           [com.github.yeriomin.playstoreapi
             GooglePlayAPI PlayStoreApiBuilder PropertiesDeviceInfoProvider]
-          [co.momomo ApacheHttpClientAdapter ObjectPool]))
+          [co.momomo ApacheHttpClientAdapter]))
 
 (defmacro gen-device-properties-file-names
   []
@@ -64,16 +64,17 @@
         (auth/set-account-token! (:id acct) (.getToken ctx))
         ctx))))
 
-(def ^ObjectPool play-contexts
-  (ObjectPool. (map create-play-context (auth/get-accounts))))
+(def play-contexts
+  (delay
+    (LinkedBlockingQueue. (map create-play-context (auth/get-accounts)))))
 
 (defn get-context!
   []
-  (.take play-contexts))
+  (.take @play-contexts))
 
 (defn restore-context!
   [ctx]
-  (.put play-contexts ctx))
+  (.put @play-contexts ctx))
 
 (def ^:dynamic thread-context nil)
 
