@@ -5,8 +5,8 @@
            [co.momomo.appsearch.html-reader :refer [xz-pages-from-url]]
            [co.momomo.appsearch.apk :as apk]
            [co.momomo.cereal :as cereal]
+           [co.momomo.crawler :as cr]
            [clojure.data.fressian :as fress]
-           [clj-http.client :as http]
            [co.momomo.s3 :as s3])
   (import [org.jsoup Jsoup]
           [org.jsoup.nodes Element]
@@ -152,12 +152,18 @@
         (%and (tag "iframe") (id "iframe_download"))))
     (first)))
 
+(defn get-download-url
+  [v]
+  (->
+    (str "https://apkpure.com" (:download_url v))
+    (cr/req :get)
+    (:body)
+    (extract-download-url)))
+  
+
 (defn download-apk
   [app-meta]
   (->
-    (str "https://apkpure.com" (:download_url app-meta))
-    (http/get)
-    (:body)
-    (extract-download-url)
-    (http/get {:as :byte-array})
+    (get-download-url app-meta)
+    (cr/req :get {:as :byte-array})
     (:body)))

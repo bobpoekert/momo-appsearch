@@ -34,9 +34,19 @@
 
 (defn upload!
   ([^String bucket ^String k ^InputStream ins data-size]
-    (.putObject
-      @s3-client
-      (PutObjectRequest. bucket k ins
-        (doto (ObjectMetadata.) (.setContentLength data-size)))))
+    (let [m (ObjectMetadata.)]
+      (when-not (nil? data-size)
+        (.setContentLength m data-size))
+      (.putObject
+        @s3-client
+        (PutObjectRequest. bucket k ins m))))
   ([^String bucket ^String k ^bytes data]
     (upload! bucket k (ByteArrayInputStream. data) (alength data))))
+
+(defn stream-http-response!
+  [bucket k response]
+  (let [content-length (get (:headers response) "Content-Length")
+        content-length (if (nil? content-length) nil (Integer/parseInt content-length))]
+    (prn [bucket k content-length])
+    (with-open [ins (io/input-stream (:body response))]
+      (upload! bucket k ins content-length))))

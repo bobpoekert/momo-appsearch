@@ -2,6 +2,7 @@
   (:gen-class)
   (require [co.momomo.appsearch.apkpure :as apkp]
            [co.momomo.appsearch.apk4fun :as apk4]
+           [co.momomo.appsearch.androidappsapk :as aa]
            [co.momomo.cereal :as cereal]
            [co.momomo.s3 :as s3]
            [co.momomo.appsearch.apk :as apk]
@@ -12,9 +13,16 @@
 
 (defn get-download-url
   [mv]
-  (or
-    (apk4/artifact-download-url (:artifact_name mv))
-    (str "https://apkpure.com" (:download_url mv))))
+  {:url
+    (if (< (Math/random) 0.5)
+      (or
+        (aa/download-url (:artifact_name mv))
+        (apkp/get-download-url mv))
+      (or
+        (apk4/artifact-download-url (:artifact_name mv))
+        (apkp/get-download-url mv)
+        (aa/download-url (:artifact_name mv))))
+    :meta mv})
 
 (defn download-and-process-apps-s3!
   [inp-bucket inp-key outp-bucket outp-basename]
@@ -27,9 +35,10 @@
             (s3/input-stream inp-bucket inp-key)
             (XZInputStream.)
             (cereal/data-seq)
-            (cereal/parmap {:core-count 50} (map get-download-url))
+            (cereal/parmap {:core-count 5} (map get-download-url))
+            (map2 (fn [v] (prn (:url v)) v))
             (filter2 #(not (nil? (:url %))))
-            (cereal/download (merge download-opts {:as :byte-array}) 100)
+            (cereal/download (merge download-opts {:as :byte-array}) 20)
             (cereal/queue-seq)
             (cereal/parrun
               (fn [core-id apks]

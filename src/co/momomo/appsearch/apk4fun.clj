@@ -1,8 +1,9 @@
 (ns co.momomo.appsearch.apk4fun
   (require [co.momomo.soup :refer :all]
+           [co.momomo.crawler :as cr]
+           [clj-http.client :as http]
            [clojure.string :as ss]
            [clojure.java.io :as io]
-           [clj-http.client :as http]
            [cheshire.core :as json])
   (import [org.jsoup Jsoup]
           [java.net URL URLEncoder]))
@@ -92,7 +93,7 @@
 (defn get-artifacts-meta
   [id]
   (->
-    (http/get (str "https://www.apk4fun.com/apk/" id "/"))
+    (cr/req (str "https://www.apk4fun.com/apk/" id "/") :get)
     (:body)
     (Jsoup/parse)
     (artifacts-meta)))
@@ -101,7 +102,8 @@
   [artifact-name]
   (try
     (let [id (->
-              (http/get (info-page-url artifact-name))
+              (info-page-url artifact-name)
+              (cr/req :get)
               (:body)
               (Jsoup/parse)
               (app-meta)
@@ -115,7 +117,7 @@
                       (first))
           rapid-url (->
                       (str "https://apk4fun.com" rapid-url)
-                      (http/get)
+                      (cr/req :get)
                       (:body)
                       (Jsoup/parse)
                       (select-attr "href"
