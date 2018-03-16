@@ -28,7 +28,6 @@
             (let [res (cr/req url :get {:as :byte-array :socket-timeout 999999})]
                 (when (ss/includes? (get (:headers res) "content-type") "text/html")
                   (throw (RuntimeException.)))
-                    ;;(s3/stream-http-response! bucket (:artifact_name info) res)
                   (s3/upload! bucket (:artifact_name info) (:body res))
                   (swap! seen (fn [s] (conj s (:artifact_name info))))))))
         nil)))
@@ -41,6 +40,7 @@
      (comp apkd/apkd-download-url :artifact_name)
      (comp apkd/apkname-download-url :artifact_name)
      (comp apkd/apkfollow-download-url :artifact_name)
+     (comp apkd/apkbird-download-url :artifact_name)
      apkp/get-download-url]
     (map (partial downloader bucket seen))
     (vec)))

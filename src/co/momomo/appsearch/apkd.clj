@@ -50,3 +50,16 @@
             (has-class "btn-success")
             (kv-val-contains "href" "/download/"))))
       (first))))
+
+(defn apkbird-download-url
+  [artifact-name]
+  (->
+    (->>
+      (->
+        (str "https://apkbird.com/en/" artifact-name "/download")
+        (cr/req :get)
+        (:body))
+      (re-find #"//dl\.apkbird\.com\/(.*?)\"")
+      (second)
+      (format "https://dl.apkbird.com/%s"))
+    (ss/replace "&amp;" "&")))
