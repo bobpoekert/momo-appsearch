@@ -34,3 +34,19 @@
     (Jsoup/parse)
     (select-attr "src" (any-pos (tag "iframe")))
     (first)))
+
+(defn apkfollow-download-url
+  [artifact-name]
+  (str "https://www.apkfollow.com"
+    (->
+      (str "https://www.apkfollow.com/app/task-management/" artifact-name "/")
+      (cr/req :get)
+      (:body)
+      (Jsoup/parse)
+      (select-attr "href"
+        (any-pos
+          (%and
+            (tag "a")
+            (has-class "btn-success")
+            (kv-val-contains "href" "/download/"))))
+      (first))))

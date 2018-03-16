@@ -80,8 +80,6 @@
 
 (def conn-timeout 500)
 
-
-
 (defn requesters
   [requester-fns]
   (concat
