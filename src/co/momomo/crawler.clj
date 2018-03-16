@@ -5,7 +5,8 @@
            [clj-http.cookies :as cookies]
            [clojure.data.xml :as xml]
            [clojure.java.io :as io]
-           [clojure.string :as ss])
+           [clojure.string :as ss]
+           [clojure.pprint :refer [pprint]])
   (import [java.util.concurrent PriorityBlockingQueue LinkedBlockingQueue]
           [java.net Socket InetSocketAddress]))
 
@@ -31,7 +32,7 @@
 (def proxies
   (delay
     (->>
-      (client/get "http://filefab.com/api.php?l=4YlFRFXacsdxd7X3Tt8nz-idps0TbEXOUZd-CpX1XuE")
+      (client/get "http://filefab.com/api.php?l=eMiLb9dfodyyKdqsj8d4cAtZNgth_CSJhTV5oDsCbdk")
       (:body)
       (ss/split-lines)
       (filter (fn [^String v] (> (.indexOf v ":") -1)))
@@ -64,7 +65,7 @@
 
 (defrecord Requester [
   thunk success-count failure-count
-  http-opts cookies score])
+  http-opts cookies score last-update])
 
 (defn requester-score
   [requester]
@@ -80,54 +81,76 @@
 
 (def conn-timeout 500)
 
-(defn build-requester-state
-  [requester-fns]
-  (let [res (LinkedBlockingQueue.)]
-    (doseq [thunk requester-fns
-            [proxy-host proxy-port] @proxies]
-      (.put res
-        (->Requester thunk 0 0
-          {:headers {"User-Agent" (pick-random @user-agents)}
-           :proxy-host proxy-host :proxy-port proxy-port
-           :conn-timeout conn-timeout :socket-timeout 5000
-           :retry-handler (fn [ex try-cnt ctx] false)}
-          (cookies/cookie-store) 0.001)))
-    (doseq [thunk requester-fns]
-      (.put res
-        (->Requester thunk 0 0
-          {:headers {"User-Agent" (pick-random @user-agents)}
-           :conn-timeout conn-timeout
-           :retry-handler (fn [ex try-cnt ctx] false)}
-          (cookies/cookie-store) 0.001)))
-    res))
-     
-(defn run-request
-  [^LinkedBlockingQueue requesters resource]
-  ((fn looper [requester retries]
-    (prn [(:success-count requester) (:failure-count requester)])
-    (binding [*http-opts* (:http-opts requester)
-              hc/*cookie-store* (:cookies requester)]
-      (let [res (try
-                  ((:thunk requester) resource)
-                  (catch Exception e (prn (.getMessage e)) ::fail))]
-        (if (= res ::fail)
-          (do
-            (.put requesters
-              (-> requester
-                (assoc :failure-count (inc (:failure-count requester)))
-                (update-requester-score)))
-            (if (< retries 100)
-              (looper (.take requesters) (inc retries))
-              false))
-          (do
-            (.put requesters
-              (-> requester
-                (assoc :success-count (inc (:success-count requester)))
-                (update-requester-score)))
-            res))))) (.take requesters) 0))
+(def ^ThreadLocal fail-count (ThreadLocal.))
 
+(defn get-fail-count
+  []
+  (let [res (.get fail-count)]
+    (if (nil? res) 0 res)))
+
+(defn reset-fail-count!
+  []
+  (.set fail-count 0))
+
+(defn inc-fail-count!
+  []
+  (.set fail-count (inc (get-fail-count))))
+
+(def ^:dynamic *http-error-handler* nil)
+
+(def error-stats (atom {}))
+
+(defn crawl-thread
+  [^LinkedBlockingQueue inq requester]
+  (cereal/thread "crawler"
+    (fn []
+      (while true 
+        (try
+          (binding [*http-opts* (:http-opts requester)
+                    hc/*cookie-store* (:cookies requester)]
+            (let [resource (.take inq)
+                  res (try
+                        ((:thunk requester) resource)
+                        (catch Exception e e))]
+              (if (instance? Throwable res)
+                (do
+                  (.put inq resource)
+                  (inc-fail-count!)
+                  (swap! error-stats
+                    (fn [v]
+                      (let [m (.getMessage ^Exception res)
+                            old (get v m)]
+                        (assoc v m (if (not (nil? old)) (inc old) 1))))))
+                (do
+                  (reset-fail-count!)
+                  (swap! error-stats
+                    (fn [v] (assoc v :success (if (nil? (:success v)) 1 (inc (:success v))))))))
+              (swap! (:last-update requester) (fn [v] (System/currentTimeMillis)))))
+          (catch Exception e (prn e)))))))
+
+(defn requesters
+  [inq requester-fns]
+  (let [res (java.util.ArrayList.)
+        onerror (fn [ex try-cnt ctx] false)]
+    (doseq [thunk requester-fns 
+           [proxy-host proxy-port] @proxies]
+      (.add res
+        (crawl-thread inq
+          (->Requester thunk 0 0
+              {:headers {"User-Agent" (pick-random @user-agents)}
+               :proxy-host proxy-host :proxy-port proxy-port
+               :conn-timeout conn-timeout :socket-timeout 5000
+               :retry-handler onerror}
+              (cookies/cookie-store) 0.001 (atom (System/currentTimeMillis))))))
+      res))
 
 (defn crawl
   [inp opts requester-fns]
-  (let [requester-state (build-requester-state requester-fns)]
-    (cereal/parmap inp opts (map (partial run-request requester-state)))))
+  (let [^LinkedBlockingQueue inq (LinkedBlockingQueue. 100)]
+    (requesters inq requester-fns)
+    (cereal/thread "crawl printer"
+      (doseq [row inp]
+        (.put inq row)))
+    (while true
+      (Thread/sleep 500)
+      (pprint @error-stats))))

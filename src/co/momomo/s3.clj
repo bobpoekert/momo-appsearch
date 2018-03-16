@@ -48,7 +48,6 @@
   [bucket k response]
   (let [content-length (get (:headers response) "Content-Length")
         content-length (if (nil? content-length) nil (Integer/parseInt content-length))]
-    (prn [bucket k content-length])
     (with-open [ins (io/input-stream (:body response))]
       (upload! bucket k ins content-length))))
 

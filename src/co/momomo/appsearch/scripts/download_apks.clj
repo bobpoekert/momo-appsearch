@@ -23,17 +23,13 @@
     (do
       (when-not (contains? @seen (:artifact_name info))
         (let [url (f info)]
-          (prn [url (:artifact_name info)])
           (if (nil? url)
             (throw (RuntimeException.))
             (let [res (cr/req url :get {:as :byte-array :socket-timeout 999999})]
                 (when (ss/includes? (get (:headers res) "content-type") "text/html")
                   (throw (RuntimeException.)))
-                  (try
                     ;;(s3/stream-http-response! bucket (:artifact_name info) res)
-                    (s3/upload! bucket (:artifact_name info) (:body res))
-                    (catch Exception e
-                      (do (prn e) (throw e))))
+                  (s3/upload! bucket (:artifact_name info) (:body res))
                   (swap! seen (fn [s] (conj s (:artifact_name info))))))))
         nil)))
 
@@ -51,13 +47,13 @@
 (defn download-apps!
   [inp-bucket inp-key outp-bucket]
   (let [seen (atom (into #{} (s3/list-bucket outp-bucket)))
-        cores (System/getProperty "cores")
-        cores (if cores (Integer/parseInt cores) 800)]
+        timeout (System/getProperty "timeout")
+        timeout (if timeout (Integer/parseInt timeout) (* 5 60 1000))]
     (->
       (s3/input-stream inp-bucket inp-key)
       (XZInputStream.)
       (cereal/data-seq)
-      (cr/crawl {:core-cnt cores} (requester-fns outp-bucket seen)))))
+      (cr/crawl {:timeout timeout} (requester-fns outp-bucket seen)))))
 
 (defn -main
   [& args]

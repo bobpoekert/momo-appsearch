@@ -33,6 +33,8 @@
     (Thread. f n)
     (.start)))
 
+(def ^:dynamic *core-id* nil)
+
 (defn parrun
   ([inp opts runner]
     (let [inq (if (instance? BlockingQueue inp)
@@ -50,7 +52,8 @@
         (thread "parrun worker"
           (fn []
             (try
-              (runner core (queue-seq inq))
+              (binding [*core-id* core]
+                (runner core (queue-seq inq)))
               (finally
                 (do
                   (.countDown done-latch)
