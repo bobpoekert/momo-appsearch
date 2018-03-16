@@ -63,3 +63,17 @@
       (second)
       (format "https://dl.apkbird.com/%s"))
     (ss/replace "&amp;" "&")))
+
+(defn apkdl-download-url
+  [artifact-name]
+  (->
+    (str "https://apkdownloadforandroid.com/" artifact-name "/")
+    (cr/req :get)
+    (:body)
+    (Jsoup/parse)
+    (select-attr "href"
+      (any-pos
+        (path
+          (%and (tag "div") (has-class "download-box"))
+          (%and (tag "a") (kv "id" "btn-download")))))
+    (first)))
