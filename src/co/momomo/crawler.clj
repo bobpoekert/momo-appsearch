@@ -5,8 +5,7 @@
            [clj-http.cookies :as cookies]
            [clojure.data.xml :as xml]
            [clojure.java.io :as io]
-           [clojure.string :as ss]
-           [clojure.pprint :refer [pprint]])
+           [clojure.string :as ss])
   (import [java.util.concurrent PriorityBlockingQueue LinkedBlockingQueue]
           [java.net Socket InetSocketAddress]))
 
@@ -81,76 +80,59 @@
 
 (def conn-timeout 500)
 
-(def ^ThreadLocal fail-count (ThreadLocal.))
 
-(defn get-fail-count
-  []
-  (let [res (.get fail-count)]
-    (if (nil? res) 0 res)))
 
-(defn reset-fail-count!
-  []
-  (.set fail-count 0))
-
-(defn inc-fail-count!
-  []
-  (.set fail-count (inc (get-fail-count))))
-
-(def ^:dynamic *http-error-handler* nil)
-
-(def error-stats (atom {}))
+(defn requesters
+  [requester-fns]
+  (concat
+    (for [thunk requester-fns [proxy-host proxy-port] @proxies]
+      (->Requester thunk 0 0
+          {:headers {"User-Agent" (pick-random @user-agents)}
+           :proxy-host proxy-host :proxy-port proxy-port
+           :conn-timeout conn-timeout :socket-timeout 5000
+           :retry-handler (fn [ex try-cnt ctx] false)}
+          (cookies/cookie-store) 0.001 (atom (System/currentTimeMillis))))
+    (for [thunk requester-fns]
+      (->Requester thunk 0 0
+          {:headers {"User-Agent" (pick-random @user-agents)}
+           :conn-timeout conn-timeout
+           :retry-handler (fn [ex try-cnt ctx] false)}
+          (cookies/cookie-store) 0.001 (atom (System/currentTimeMillis))))))
 
 (defn crawl-thread
   [^LinkedBlockingQueue inq requester]
   (cereal/thread "crawler"
     (fn []
-      (while true 
+      (while true
         (try
-          (binding [*http-opts* (:http-opts requester)
-                    hc/*cookie-store* (:cookies requester)]
-            (let [resource (.take inq)
-                  res (try
-                        ((:thunk requester) resource)
-                        (catch Exception e e))]
-              (if (instance? Throwable res)
-                (do
-                  (.put inq resource)
-                  (inc-fail-count!)
-                  (swap! error-stats
-                    (fn [v]
-                      (let [m (.getMessage ^Exception res)
-                            old (get v m)]
-                        (assoc v m (if (not (nil? old)) (inc old) 1))))))
-                (do
-                  (reset-fail-count!)
-                  (swap! error-stats
-                    (fn [v] (assoc v :success (if (nil? (:success v)) 1 (inc (:success v))))))))
-              (swap! (:last-update requester) (fn [v] (System/currentTimeMillis)))))
-          (catch Exception e (prn e)))))))
-
-(defn requesters
-  [inq requester-fns]
-  (let [res (java.util.ArrayList.)
-        onerror (fn [ex try-cnt ctx] false)]
-    (doseq [thunk requester-fns 
-           [proxy-host proxy-port] @proxies]
-      (.add res
-        (crawl-thread inq
-          (->Requester thunk 0 0
-              {:headers {"User-Agent" (pick-random @user-agents)}
-               :proxy-host proxy-host :proxy-port proxy-port
-               :conn-timeout conn-timeout :socket-timeout 5000
-               :retry-handler onerror}
-              (cookies/cookie-store) 0.001 (atom (System/currentTimeMillis))))))
-      res))
+          (let [resource (.take inq)]
+            (binding [*http-opts* (:http-opts requester)
+                      hc/*cookie-store* (:cookies requester)]
+              (let [res (try
+                          ((:thunk requester) resource)
+                          (catch Exception e (prn (.getMessage e)) ::fail))]
+                (when (= res :fail)
+                  (.put inq resource))
+                (swap! (:last-update requester) (fn [v] (System/currentTimeMillis))))))
+          (catch InterruptedException e nil))))))
 
 (defn crawl
   [inp opts requester-fns]
-  (let [^LinkedBlockingQueue inq (LinkedBlockingQueue. 100)]
-    (requesters inq requester-fns)
-    (cereal/thread "crawl printer"
-      (doseq [row inp]
-        (.put inq row)))
-    (while true
-      (Thread/sleep 500)
-      (pprint @error-stats))))
+  (let [^LinkedBlockingQueue inq (LinkedBlockingQueue. 100)
+        reqs (vec (requesters requester-fns))
+        threads (vec (map (partial crawl-thread inq) (requesters requester-fns)))]
+    (when-not (nil? (:timeout opts))
+      (cereal/thread "crawler interrupter"
+        (fn []
+          (while true
+            (Thread/sleep 100)
+            (loop [reqs reqs threads threads]
+              (when (and reqs threads)
+                (let [req (first reqs) thread (first threads)]
+                  (when (> (- (System/currentTimeMillis)
+                              @(:last-update req))
+                           (:timeout opts))
+                    (.interrupt ^Thread thread)))
+                (recur (rest reqs) (rest threads))))))))
+    (doseq [row inp]
+      (.put inq row))))
