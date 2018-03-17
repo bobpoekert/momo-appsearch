@@ -8,48 +8,56 @@
            [co.momomo.appsearch.lieng :as lieng]
            [co.momomo.appsearch.androidappsapk :as aapk]
            [co.momomo.appsearch.apk4fun :as apk4]
-           [clojure.string :as ss])
+           [clojure.string :as ss]
+           [clojure.core.async :as async]
+           [co.momomo.async :refer [gocatch]])
   (import [org.tukaani.xz XZInputStream]))
 
-(defn throw-if-nil
-  [v]
-  (if (nil? v)
-    (throw (RuntimeException.))
-    v))
+(def errors (atom (list)))
 
 (defn downloader
   [bucket seen f]
-  (fn [info]
-    (do
-      (when-not (contains? @seen (:artifact_name info))
-        (let [url (f info)]
-          (if (nil? url)
-            (throw (RuntimeException.))
-            (let [res (cr/req url :get {:as :byte-array :socket-timeout 999999})]
-                (when (ss/includes? (get (:headers res) "content-type") "text/html")
-                  (throw (RuntimeException.)))
-                  (s3/upload! bucket (:artifact_name info) (:body res))
-                  (swap! seen (fn [s] (conj s (:artifact_name info))))))))
-        nil)))
+  (fn [requester info]
+    (gocatch
+      (try
+        (if (and false (contains? @seen (:artifact_name info)))
+          nil
+          (let [url (async/<! (f requester info))]
+            (if (not (string? url))
+              :error
+              (let [res (async/<! (cr/req url requester :get {:as :byte-array :socket-timeout 999999}))]
+                  (if (ss/includes? (get (:headers res) "content-type") "text/html")
+                    :error
+                    (do
+                      (->
+                        (s3/upload! bucket (:artifact_name info) (:body res))
+                        (async/thread)
+                        (async/<!))
+                      (swap! seen (fn [s] (conj s (:artifact_name info))))
+                      :success))))))
+          (catch Exception e
+            (prn (.getMessage e))
+            :error)))))
 
 (defn requester-fns
   [bucket seen]
   (->>
-    [(comp lieng/download-url :artifact_name)
-     (comp aapk/download-url :artifact_name)
-     (comp apkd/apkd-download-url :artifact_name)
-     (comp apkd/apkname-download-url :artifact_name)
-     (comp apkd/apkfollow-download-url :artifact_name)
-     (comp apkd/apkbird-download-url :artifact_name)
-     (comp apkd/apkdl-download-url :artifact_name)
-     (comp apkd/apkdroid-download-url :artifact_name)
+    [lieng/download-url
+     aapk/download-url 
+     apkd/apkd-download-url 
+     apkd/apkname-download-url 
+     apkd/apkfollow-download-url 
+     apkd/apkbird-download-url 
+     apkd/apkdl-download-url 
+     apkd/apkdroid-download-url 
      apkp/get-download-url]
     (map (partial downloader bucket seen))
     (vec)))
 
 (defn download-apps!
   [inp-bucket inp-key outp-bucket]
-  (let [seen (atom (into #{} (s3/list-bucket outp-bucket)))
+  (let [;seen (atom (into #{} (s3/list-bucket outp-bucket)))
+        seen (atom #{})
         timeout (System/getProperty "timeout")
         timeout (if timeout (Integer/parseInt timeout) (* 5 60 1000))]
     (->

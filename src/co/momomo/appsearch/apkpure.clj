@@ -7,7 +7,9 @@
            [co.momomo.cereal :as cereal]
            [co.momomo.crawler :as cr]
            [clojure.data.fressian :as fress]
-           [co.momomo.s3 :as s3])
+           [co.momomo.s3 :as s3]
+           [clojure.core.async :as async]
+           [co.momomo.async :refer [gocatch]])
   (import [org.jsoup Jsoup]
           [org.jsoup.nodes Element]
           [java.util.concurrent LinkedBlockingQueue TimeUnit]
@@ -153,17 +155,11 @@
     (first)))
 
 (defn get-download-url
-  [v]
-  (->
-    (str "https://apkpure.com" (:download_url v))
-    (cr/req :get)
-    (:body)
-    (extract-download-url)))
-  
-
-(defn download-apk
-  [app-meta]
-  (->
-    (get-download-url app-meta)
-    (cr/req :get {:as :byte-array})
-    (:body)))
+  [requester job]
+  (gocatch
+    (->
+      (str "https://apkpure.com" (:download_url job))
+      (cr/req requester :get)
+      (async/<!)
+      (:body)
+      (extract-download-url))))

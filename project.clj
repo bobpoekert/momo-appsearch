@@ -34,4 +34,5 @@
                  [org.smali/dexlib2 "2.2.3"]
                  [proteus "0.1.6"]
                  [com.amazonaws/aws-java-sdk-s3 "1.11.292"]
-                 [org.clojure/data.xml "0.0.8"]])
+                 [org.clojure/data.xml "0.0.8"]
+                 [org.clojure/core.async "0.4.474"]])

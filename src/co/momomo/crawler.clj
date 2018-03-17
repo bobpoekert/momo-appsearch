@@ -6,7 +6,9 @@
            [clojure.data.xml :as xml]
            [clojure.java.io :as io]
            [clojure.string :as ss]
-           [slingshot.slingshot :refer [try+ throw+]])
+           [slingshot.slingshot :refer [try+ throw+]]
+           [clojure.core.async :as async]
+           [co.momomo.async :refer [gocatch]])
   (import [java.util.concurrent PriorityBlockingQueue LinkedBlockingQueue]
           [java.net Socket InetSocketAddress]))
 
@@ -55,33 +57,23 @@
    :put client/put})
 
 (defn req
-  ([url thunk opts & args]
-    (let [opts (merge *http-opts* opts)]
-      (try+
-        (apply (get http-thunks thunk) url opts args)
-        (catch [:status 503] _
-          (Thread/sleep 200)
-          (throw+)))))
-  ([url thunk]
-    (req url thunk {}))
-  ([url]
-    (req url :get)))
+  ([url requester thunk opts]
+    (let [res (async/chan)
+          opts (merge (:http-opts requester) opts)
+          opts (assoc opts :async? true)
+          responder (fn [response] 
+                      (async/>!! res response))]
+      (binding [hc/*cookie-store* (:cookies requester)]
+        ((get http-thunks thunk) url opts responder responder))
+      res))
+  ([url requester thunk]
+    (req url requester thunk {}))
+  ([url requester]
+    (req url requester :get)))
 
 (defrecord Requester [
   thunk success-count failure-count
-  http-opts cookies score last-update])
-
-(defn requester-score
-  [requester]
-  (*
-    (* (Math/random) 0.5) ; epsilon
-    (+ 0.0001 ; anti-vanising constant
-      (/ (:success-count requester)
-         (+ (:success-count requester) (:failure-count requester))))))
-
-(defn update-requester-score
-  [requester]
-  (assoc requester :score (requester-score requester)))
+  http-opts cookies last-update])
 
 (def conn-timeout 500)
 
@@ -95,48 +87,44 @@
              :proxy-host proxy-host :proxy-port proxy-port
              :conn-timeout conn-timeout :socket-timeout 5000
              :retry-handler retry}
-            (cookies/cookie-store) 0.001 (atom (System/currentTimeMillis))))
+            (cookies/cookie-store) (atom (System/currentTimeMillis))))
       (for [thunk requester-fns]
         (->Requester thunk 0 0
             {:headers {"User-Agent" (pick-random @user-agents)}
              :conn-timeout conn-timeout
              :retry-handler retry}
-            (cookies/cookie-store) 0.001 (atom (System/currentTimeMillis)))))))
-
-(defn crawl-thread
-  [^LinkedBlockingQueue inq requester]
-  (cereal/thread "crawler"
-    (fn []
-      (while true
-        (try
-          (let [resource (.take inq)]
-            (binding [*http-opts* (:http-opts requester)
-                      hc/*cookie-store* (:cookies requester)]
-              (let [res (try
-                          ((:thunk requester) resource)
-                          (catch Exception e (prn (.getMessage e)) ::fail))]
-                (when (= res :fail)
-                  (.put inq resource))
-                (swap! (:last-update requester) (fn [v] (System/currentTimeMillis))))))
-          (catch InterruptedException e nil))))))
+            (cookies/cookie-store) (atom (System/currentTimeMillis)))))))
 
 (defn crawl
   [inp opts requester-fns]
-  (let [^LinkedBlockingQueue inq (LinkedBlockingQueue. 100)
-        reqs (vec (requesters requester-fns))
-        threads (vec (map (partial crawl-thread inq) (requesters requester-fns)))]
-    (when-not (nil? (:timeout opts))
-      (cereal/thread "crawler interrupter"
-        (fn []
-          (while true
-            (Thread/sleep 100)
-            (loop [reqs reqs threads threads]
-              (when (and reqs threads)
-                (let [req (first reqs) thread (first threads)]
-                  (when (> (- (System/currentTimeMillis)
-                              @(:last-update req))
-                           (:timeout opts))
-                    (.interrupt ^Thread thread)))
-                (recur (rest reqs) (rest threads))))))))
+  (let [inq (LinkedBlockingQueue. 50) 
+        inchan (async/chan 50)
+        rrs (vec (requesters requester-fns))
+        crawler-chan
+          (gocatch
+            (loop [requester-jobs {}
+                   requester-chans {}
+                   requester-empties rrs]
+              (if (empty? requester-empties)
+                (let [[v port] (async/alts! (vec (keys requester-chans)))
+                      rr (get requester-chans port)]
+                  (when-not (= v :success)
+                    (.put inq (get requester-jobs port)))
+                  (recur
+                    (dissoc requester-jobs port)
+                    (dissoc requester-chans port)
+                    (cons rr requester-empties)))
+                (let [[rr & rrs] requester-empties
+                      job (async/<! inchan)
+                      rchan ((:thunk rr) rr job)]
+                  (recur
+                    (assoc requester-jobs rchan job)
+                    (assoc requester-chans rchan rr)
+                    rrs)))))]
+    (cereal/thread "chan putter"
+      (fn []
+        (while true
+          (async/>!! inchan (.take inq)))))
     (doseq [row inp]
-      (.put inq row))))
+      (.put inq row))
+    (async/<!! crawler-chan)))
