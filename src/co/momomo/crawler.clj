@@ -5,7 +5,8 @@
            [clj-http.cookies :as cookies]
            [clojure.data.xml :as xml]
            [clojure.java.io :as io]
-           [clojure.string :as ss])
+           [clojure.string :as ss]
+           [slingshot.slingshot :refer [try+ throw+]])
   (import [java.util.concurrent PriorityBlockingQueue LinkedBlockingQueue]
           [java.net Socket InetSocketAddress]))
 
@@ -56,7 +57,11 @@
 (defn req
   ([url thunk opts & args]
     (let [opts (merge *http-opts* opts)]
-      (apply (get http-thunks thunk) url opts args)))
+      (try+
+        (apply (get http-thunks thunk) url opts args)
+        (catch [:status 503] _
+          (Thread/sleep 200)
+          (throw+)))))
   ([url thunk]
     (req url thunk {}))
   ([url]
@@ -82,20 +87,21 @@
 
 (defn requesters
   [requester-fns]
-  (concat
-    (for [thunk requester-fns [proxy-host proxy-port] @proxies]
-      (->Requester thunk 0 0
-          {:headers {"User-Agent" (pick-random @user-agents)}
-           :proxy-host proxy-host :proxy-port proxy-port
-           :conn-timeout conn-timeout :socket-timeout 5000
-           :retry-handler (fn [ex try-cnt ctx] false)}
-          (cookies/cookie-store) 0.001 (atom (System/currentTimeMillis))))
-    (for [thunk requester-fns]
-      (->Requester thunk 0 0
-          {:headers {"User-Agent" (pick-random @user-agents)}
-           :conn-timeout conn-timeout
-           :retry-handler (fn [ex try-cnt ctx] false)}
-          (cookies/cookie-store) 0.001 (atom (System/currentTimeMillis))))))
+  (let [retry (fn [ex try-cnt ctx] false)]
+    (concat
+      (for [thunk requester-fns [proxy-host proxy-port] @proxies]
+        (->Requester thunk 0 0
+            {:headers {"User-Agent" (pick-random @user-agents)}
+             :proxy-host proxy-host :proxy-port proxy-port
+             :conn-timeout conn-timeout :socket-timeout 5000
+             :retry-handler retry}
+            (cookies/cookie-store) 0.001 (atom (System/currentTimeMillis))))
+      (for [thunk requester-fns]
+        (->Requester thunk 0 0
+            {:headers {"User-Agent" (pick-random @user-agents)}
+             :conn-timeout conn-timeout
+             :retry-handler retry}
+            (cookies/cookie-store) 0.001 (atom (System/currentTimeMillis)))))))
 
 (defn crawl-thread
   [^LinkedBlockingQueue inq requester]

@@ -42,6 +42,7 @@
      (comp apkd/apkfollow-download-url :artifact_name)
      (comp apkd/apkbird-download-url :artifact_name)
      (comp apkd/apkdl-download-url :artifact_name)
+     (comp apkd/apkdroid-download-url :artifact_name)
      apkp/get-download-url]
     (map (partial downloader bucket seen))
     (vec)))

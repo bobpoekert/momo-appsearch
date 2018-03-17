@@ -1,7 +1,8 @@
 (ns co.momomo.appsearch.apkd
   (require [co.momomo.soup :refer :all]
            [co.momomo.crawler :as cr]
-           [clojure.string :as ss])
+           [clojure.string :as ss]
+           [cheshire.core :as json])
   (import [org.jsoup Jsoup]))
 
 (defn apkd-download-url
@@ -77,3 +78,21 @@
           (%and (tag "div") (has-class "download-box"))
           (%and (tag "a") (kv "id" "btn-download")))))
     (first)))
+
+(defn apkdroid-download-url
+  [artifact-name]
+  (let [res
+    (->
+      (->>
+        (->
+          (str "https://www.apkandroid.ru/a/" artifact-name "/downloading.html")
+          (cr/req :get)
+          (:body))
+        (re-find #"\"https://www.apkandroid.ru/api/api\.php\",\{id\:\"(.*?)\"")
+        (second)
+        (format "https://www.apkandroid.ru/api/api.php?id=%s"))
+      (cr/req :get)
+      (:body)
+      (json/parse-string)
+      (get "url"))]
+    (if (ss/includes? res "downloadatoz.com") nil res)))
