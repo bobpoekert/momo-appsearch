@@ -11,9 +11,10 @@
            [clojure.string :as ss]
            [clojure.core.async :as async]
            [co.momomo.async :refer [gocatch]])
-  (import [org.tukaani.xz XZInputStream]))
+  (import [org.tukaani.xz XZInputStream]
+          [java.util.concurrent.atomic AtomicReference]))
 
-(def errors (atom (list)))
+(def error (AtomicReference.))
 
 (defn downloader
   [bucket seen f]
@@ -24,12 +25,18 @@
           nil
           (let [url (async/<! (f requester info))]
             (if (not (string? url))
-              :error
+              (do
+                (if (instance? Throwable url)
+                  (.set error url))
+                :error)
               (let [res (async/<! (cr/req url requester :get {:as :byte-array :socket-timeout 999999}))]
-                  (if (or (not (= (:status res) 200)
-                               (ss/includes? (get (:headers res) "content-type") "text/html")))
-                    :error
+                  (if (or (not (= (:status res) 200))
+                          (ss/includes? (get (:headers res) "content-type") "text/html"))
                     (do
+                      (prn (:artifact_name info) "error")
+                      :error)
+                    (do
+                      (prn (:artifact_name info) url)
                       (->
                         (s3/upload! bucket (:artifact_name info) (:body res))
                         (async/thread)
