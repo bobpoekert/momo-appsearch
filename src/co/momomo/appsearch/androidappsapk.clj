@@ -16,7 +16,7 @@
               (str "https://androidappsapk.co/download/" (:artifact_name job))
               (cr/req requester :get)
               (async/<!)
-              (:body)
+              (cr/get-body-or-throw)
               (Jsoup/parse)
               (select-attr "href" btn-selector)
               (first))]
@@ -24,7 +24,7 @@
         (str "https://androidappsapk.co" download-page-url)
         (cr/req requester :get)
         (async/<!)
-        (:body)
+        (cr/get-body-or-throw)
         (Jsoup/parse)
         (select-attr "href" btn-selector)
         (first)))))

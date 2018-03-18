@@ -161,5 +161,5 @@
       (str "https://apkpure.com" (:download_url job))
       (cr/req requester :get)
       (async/<!)
-      (:body)
+      (cr/get-body-or-throw)
       (extract-download-url))))

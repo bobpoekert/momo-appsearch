@@ -14,7 +14,7 @@
       (str "https://apkdownloadforandroid.com/" (:artifact_name job))
       (cr/req requester :get)
       (async/<!)
-      (:body)
+      (cr/get-body-or-throw)
       (Jsoup/parse)
       (select-attr "href"
         (any-pos
@@ -31,13 +31,13 @@
         (->
           (str "https://apkname.com/download/" (:artifact_name job))
           (cr/req :get))
-        (:body)
+        (cr/get-body-or-throw)
         (re-find #"get_files\(['\"]?(.*?)['\"]")
         (second)
         (format "https://apkname.com/apk.php?com=%s&server=1"))
       (cr/req requester :get)
       (async/<!)
-      (:body)
+      (cr/get-body-or-throw)
       (Jsoup/parse)
       (select-attr "src" (any-pos (tag "iframe")))
       (first))))
@@ -50,7 +50,7 @@
         (str "https://www.apkfollow.com/app/task-management/" (:artifact_name job) "/")
         (cr/req requester :get)
         (async/<!)
-        (:body)
+        (cr/get-body-or-throw)
         (Jsoup/parse)
         (select-attr "href"
           (any-pos
@@ -69,7 +69,7 @@
           (str "https://apkbird.com/en/" (:artifact_name job) "/download")
           (cr/req requester :get)
           (async/<!)
-          (:body))
+          (cr/get-body-or-throw))
         (re-find #"//dl\.apkbird\.com\/(.*?)\"")
         (second)
         (format "https://dl.apkbird.com/%s"))
@@ -82,7 +82,7 @@
       (str "https://apkdownloadforandroid.com/" (:artifact_name job) "/")
       (cr/req requester :get)
       (async/<!)
-      (:body)
+      (cr/get-body-or-throw)
       (Jsoup/parse)
       (select-attr "href"
         (any-pos
@@ -100,13 +100,13 @@
           (->
             (str "https://www.apkandroid.ru/a/" (:artifact_name job) "/downloading.html")
             (cr/req :get)
-            (:body))
+            (cr/get-body-or-throw))
           (re-find #"\"https://www.apkandroid.ru/api/api\.php\",\{id\:\"(.*?)\"")
           (second)
           (format "https://www.apkandroid.ru/api/api.php?id=%s"))
         (cr/req requester :get)
         (async/<!)
-        (:body)
+        (cr/get-body-or-throw)
         (json/parse-string)
         (get "url"))]
       (if (ss/includes? res "downloadatoz.com") nil res))))

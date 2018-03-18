@@ -21,7 +21,7 @@
           (:artifact_name job) "?PageSpeed=noscript%27")
         (cr/req requester :get)
         (async/<!)
-        (:body)
+        (cr/get-body-or-throw)
         (Jsoup/parse)
         (select-attr "href"
           (any-pos

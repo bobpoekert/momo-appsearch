@@ -1,14 +1,13 @@
 (ns co.momomo.crawler
   (require [co.momomo.cereal :as cereal]
-           [clj-http.client :as client]
-           [clj-http.core :as hc]
-           [clj-http.cookies :as cookies]
            [clojure.data.xml :as xml]
            [clojure.java.io :as io]
            [clojure.string :as ss]
            [slingshot.slingshot :refer [try+ throw+]]
            [clojure.core.async :as async]
-           [co.momomo.async :refer [gocatch]])
+           [clj-http.client :as client]
+           [co.momomo.async :refer [gocatch]]
+           [co.momomo.http :as http])
   (import [java.util.concurrent PriorityBlockingQueue LinkedBlockingQueue]
           [java.net Socket InetSocketAddress]))
 
@@ -48,57 +47,35 @@
   [v]
   (nth v (int (* (Math/random) (count v)))))
 
-(def ^:dynamic *http-opts* {})
+(defrecord Requester [thunk client headers cookies])
 
-(def http-thunks
-  {:get client/get
-   :post client/post
-   :head client/head
-   :put client/put})
+(def req http/req)
 
-(defn req
-  ([url requester thunk opts]
-    (let [res (async/chan)
-          opts (merge (:http-opts requester) opts)
-          opts (assoc opts :async? true)
-          responder (fn [response] 
-                      (async/>!! res response))]
-      (binding [hc/*cookie-store* (:cookies requester)]
-        ((get http-thunks thunk) url opts responder responder))
-      res))
-  ([url requester thunk]
-    (req url requester thunk {}))
-  ([url requester]
-    (req url requester :get)))
+(defn get-body-or-throw
+  [res]
+  (if (= (:status res) 200)
+    (:body res)
+    (throw (RuntimeException.))))
 
-(defrecord Requester [
-  thunk success-count failure-count
-  http-opts cookies last-update])
-
-(def conn-timeout 500)
+(defn make-requester
+  [thunk proxy-protocol proxy-host proxy-port]
+  (->Requester thunk
+    (http/build-client proxy-protocol proxy-host proxy-port) 
+    {"User-Agnent" (pick-random @user-agents)}
+    (atom [])))
 
 (defn requesters
   [requester-fns]
   (let [retry (fn [ex try-cnt ctx] false)]
     (concat
       (for [thunk requester-fns [proxy-host proxy-port] @proxies]
-        (->Requester thunk 0 0
-            {:headers {"User-Agent" (pick-random @user-agents)}
-             :proxy-host proxy-host :proxy-port proxy-port
-             :conn-timeout conn-timeout :socket-timeout 5000
-             :retry-handler retry}
-            (cookies/cookie-store) (atom (System/currentTimeMillis))))
+        (make-requester thunk :http proxy-host proxy-port))
       (for [thunk requester-fns]
-        (->Requester thunk 0 0
-            {:headers {"User-Agent" (pick-random @user-agents)}
-             :conn-timeout conn-timeout
-             :retry-handler retry}
-            (cookies/cookie-store) (atom (System/currentTimeMillis)))))))
+        (make-requester thunk nil nil nil)))))
 
 (defn crawl
   [inp opts requester-fns]
-  (let [inq (LinkedBlockingQueue. 50) 
-        inchan (async/chan 50)
+  (let [inchan (async/chan 50)
         rrs (vec (requesters requester-fns))
         crawler-chan
           (gocatch
@@ -109,7 +86,9 @@
                 (let [[v port] (async/alts! (vec (keys requester-chans)))
                       rr (get requester-chans port)]
                   (when-not (= v :success)
-                    (.put inq (get requester-jobs port)))
+                    (when (instance? Throwable v)
+                      (prn (.getMessage ^Throwable v)))
+                    (async/put! inchan (get requester-jobs port)))
                   (recur
                     (dissoc requester-jobs port)
                     (dissoc requester-chans port)
@@ -121,10 +100,7 @@
                     (assoc requester-jobs rchan job)
                     (assoc requester-chans rchan rr)
                     rrs)))))]
-    (cereal/thread "chan putter"
-      (fn []
-        (while true
-          (async/>!! inchan (.take inq)))))
     (doseq [row inp]
-      (.put inq row))
+      (prn (:artifact_name row))
+      (async/>!! inchan row))
     (async/<!! crawler-chan)))

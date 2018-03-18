@@ -26,7 +26,8 @@
             (if (not (string? url))
               :error
               (let [res (async/<! (cr/req url requester :get {:as :byte-array :socket-timeout 999999}))]
-                  (if (ss/includes? (get (:headers res) "content-type") "text/html")
+                  (if (or (not (= (:status res) 200)
+                               (ss/includes? (get (:headers res) "content-type") "text/html")))
                     :error
                     (do
                       (->

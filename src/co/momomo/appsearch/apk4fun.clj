@@ -22,7 +22,7 @@
           (http/post "https://rapidgator.net/api/user/login"
             {:form-params {:username username :password pass}
              :as :json})
-          (:body)
+          (cr/get-body-or-throw)
           (:response)
           (:session_id))))))
 
@@ -35,7 +35,7 @@
           "&url="
           (URLEncoder/encode raw-url "UTF-8"))
         (merge opts {:as :json}))
-      (:body)
+      (cr/get-body-or-throw)
       (:response)
       (:url)))
   ([raw-url]
@@ -94,7 +94,7 @@
   [id]
   (->
     (cr/req (str "https://www.apk4fun.com/apk/" id "/") :get)
-    (:body)
+    (cr/get-body-or-throw)
     (Jsoup/parse)
     (artifacts-meta)))
 
@@ -104,7 +104,7 @@
     (let [id (->
               (info-page-url artifact-name)
               (cr/req :get)
-              (:body)
+              (cr/get-body-or-throw)
               (Jsoup/parse)
               (app-meta)
               (:apk4fun_id))
@@ -118,7 +118,7 @@
           rapid-url (->
                       (str "https://apk4fun.com" rapid-url)
                       (cr/req :get)
-                      (:body)
+                      (cr/get-body-or-throw)
                       (Jsoup/parse)
                       (select-attr "href"
                         (any-pos
