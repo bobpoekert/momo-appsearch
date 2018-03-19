@@ -7,9 +7,7 @@
            [co.momomo.cereal :as cereal]
            [co.momomo.crawler :as cr]
            [clojure.data.fressian :as fress]
-           [co.momomo.s3 :as s3]
-           [clojure.core.async :as async]
-           [co.momomo.async :refer [gocatch]])
+           [co.momomo.s3 :as s3])
   (import [org.jsoup Jsoup]
           [org.jsoup.nodes Element]
           [java.util.concurrent LinkedBlockingQueue TimeUnit]
@@ -153,13 +151,3 @@
       (any-pos
         (%and (tag "iframe") (id "iframe_download"))))
     (first)))
-
-(defn get-download-url
-  [requester job]
-  (gocatch
-    (->
-      (str "https://apkpure.com" (:download_url job))
-      (cr/req requester :get)
-      (async/<!)
-      (cr/get-body-or-throw)
-      (extract-download-url))))

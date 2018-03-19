@@ -35,5 +35,5 @@
                  [proteus "0.1.6"]
                  [com.amazonaws/aws-java-sdk-s3 "1.11.292"]
                  [org.clojure/data.xml "0.0.8"]
-                 [org.clojure/core.async "0.4.474"]
-                 [org.asynchttpclient/async-http-client "2.4.4"]])
+                 [org.asynchttpclient/async-http-client "2.4.4"]
+                 [manifold "0.1.6"]])

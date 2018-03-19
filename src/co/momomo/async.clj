@@ -1,9 +1,36 @@
 (ns co.momomo.async
-  (require [clojure.core.async :refer [go]]))
+  (require [manifold.deferred :as d]))
 
-(defmacro gocatch
-  [& bodies]
-  `(go
-    (try
-      ~@bodies
-      (catch Throwable e# e#))))
+(defn inner->chain
+  [forms x]
+  (if (not forms)
+    x
+    (let [[h & t] forms]
+      (cond
+        (not (seq? h)) (inner->chain (list h x) t)
+        (= (first h) 'd->)
+          (let [vsym (gensym "d->arg")]
+            `(d/chain ~x
+              (fn ~(gensym "d-thread") [~vsym] ~(inner->chain t vsym))))
+        :else (inner->chain t `(~(first h) ~x ~@(rest h)))))))
+
+(defmacro ->chain
+  [dv body]
+  (inner->chain body dv))
+
+(defn inner->>chain
+  [forms x]
+  (if (not forms)
+    x
+    (let [[h & t] forms]
+      (cond
+        (not (seq? h)) (inner->>chain (list h x) t)
+        (= (first h) 'd->)
+          (let [vsym (gensym "d->arg")]
+            `(d/chain ~x
+              (fn ~(gensym "d-thread") [~vsym] ~(inner->>chain t vsym))))
+        :else (inner->>chain t `(~(first h) ~@(rest h) ~x))))))
+
+(defmacro ->>chain
+  [dv body]
+  (inner->>chain body dv))

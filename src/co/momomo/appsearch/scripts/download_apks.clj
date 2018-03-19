@@ -3,14 +3,9 @@
   (require [co.momomo.crawler :as cr]
            [co.momomo.s3 :as s3]
            [co.momomo.cereal :as cereal]
-           [co.momomo.appsearch.apkpure :as apkp]
            [co.momomo.appsearch.apkd :as apkd]
-           [co.momomo.appsearch.lieng :as lieng]
-           [co.momomo.appsearch.androidappsapk :as aapk]
-           [co.momomo.appsearch.apk4fun :as apk4]
            [clojure.string :as ss]
-           [clojure.core.async :as async]
-           [co.momomo.async :refer [gocatch]])
+           [manifold.deferred :as d])
   (import [org.tukaani.xz XZInputStream]
           [java.util.concurrent.atomic AtomicReference]))
 
@@ -19,42 +14,37 @@
 (defn downloader
   [bucket seen f]
   (fn [requester info]
-    (gocatch
-      (try
-        (if (and false (contains? @seen (:artifact_name info)))
-          nil
-          (let [url (async/<! (f requester info))]
-            (prn "a")
-            (.set error url)
-            (if (not (string? url))
-              :error
-              (let [res (async/<! (cr/req url requester :get {:as :byte-array}))]
-                  (if (or (not (= (:status res) 200))
-                          (ss/includes? (get (:headers res) "content-type") "text/html"))
-                    :error
-                    (do
-                      (->
-                        (s3/upload! bucket (:artifact_name info) (:body res))
-                        (async/thread)
-                        (async/<!))
-                      (swap! seen (fn [s] (conj s (:artifact_name info))))
-                      :success))))))
-          (catch Exception e
-            (prn (.getMessage e))
-            :error)))))
+    (if (and false (contains? @seen (:artifact_name info)))
+      nil
+      (d/chain
+        (f requester info)
+        (fn [url]
+          (prn "a")
+          (.set error url)
+          (if (not (string? url))
+            :error
+            (cr/req url requester :get {:as :byte-array})))
+        (fn [apk-res]
+          (if (or (not (= (:status apk-res) 200))
+                  (ss/includes? (get (:headers apk-res) "content-type") "text/html"))
+            :error
+            (do
+              (d/future (s3/upload! bucket (:artifact_name info) (:body apk-res)))
+              (swap! seen (fn [s] (conj s (:artifact_name info))))
+              :success)))))))
 
 (defn requester-fns
   [bucket seen]
   (->>
-    [lieng/download-url
-     aapk/download-url 
+    [apkd/lieng-download-url
+     apkd/aapk-download-url 
      apkd/apkd-download-url 
      apkd/apkname-download-url 
      apkd/apkfollow-download-url 
      apkd/apkbird-download-url 
      apkd/apkdl-download-url 
      apkd/apkdroid-download-url 
-     apkp/get-download-url]
+     apkd/apkp-download-url]
     (map (partial downloader bucket seen))
     (vec)))
 

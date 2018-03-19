@@ -4,9 +4,8 @@
            [clojure.java.io :as io]
            [clojure.string :as ss]
            [slingshot.slingshot :refer [try+ throw+]]
-           [clojure.core.async :as async]
            [clj-http.client :as client]
-           [co.momomo.async :refer [gocatch]]
+           [manifold.deferred :as d]
            [co.momomo.http :as http])
   (import [java.util.concurrent PriorityBlockingQueue LinkedBlockingQueue]
           [java.net Socket InetSocketAddress]
@@ -89,29 +88,35 @@
 
 (defn crawl
   [inp opts requester-fns]
-  (let [^ArrayDeque empties (ArrayDeque. ^java.util.List (take 10 (requesters requester-fns)))
-        ^HashMap chan-rrs (HashMap.)
-        ^HashMap chan-jobs (HashMap.)]
+  (let [^ArrayDeque empties (ArrayDeque. ^java.util.Collection (requesters requester-fns))
+        ^LinkedBlockingQueue results (LinkedBlockingQueue. 20)]
     (loop [inp inp]
-      (prn (:artifact_name (first inp)))
-      (if (empty? empties)
-        (let [_ (prn "alts waiting")
-              [v chan] (async/alts!! (vec (keys chan-rrs)))
-              _ (prn "alts got")
-              rr (get chan-rrs chan)
-              job (get chan-jobs chan)
+      (if (< (.size empties) 1) 
+        (let [result (.take results)
+              rr (:rr result)
+              job (:job result)
+              failed? (or
+                        (:error result)
+                        (not (= (:result result)) :success))
               nxt (cond
-                    (= v :success) inp
+                    (not failed?) inp
                     (< (:ttl job) 1) inp
                     :else (cons (assoc job :ttl (dec (:ttl job))) inp))]
+          (quote
+            (when (:error result)
+              (prn (.getMessage (:error result)))))
           (.add empties rr)
-          (.remove chan-rrs chan)
-          (.remove chan-jobs job)
           (recur nxt))
         (let [[job & rst] inp
-              job (assoc job :ttl 100)
               rr (.remove empties)
-              chan ((:thunk rr) rr job)]
-          (.put chan-rrs chan rr)
-          (.put chan-jobs chan job)
+              job (assoc job :ttl 100)
+              result-map {:rr rr :job job}]
+          (d/on-realized
+            ((:thunk rr) rr job)
+            (fn [result]
+              (.put results
+                (assoc result-map :result result)))
+            (fn [error]
+              (.put results
+                (assoc result-map :error error))))
           (recur rst))))))

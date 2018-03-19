@@ -1,10 +1,9 @@
 (ns co.momomo.http
-  (require [clojure.core.async :as async]
-           [clojure.core.async.impl.concurrent :as conc])
-  (import [org.asynchttpclient Dsl AsyncHttpClient RequestBuilder]
-          [org.asynchttpclient ListenableFuture Response]
+  (require [manifold.deferred :as d])
+  (import [org.asynchttpclient Dsl AsyncHttpClient RequestBuilder
+            ListenableFuture Response AsyncCompletionHandler]
           [org.asynchttpclient.proxy ProxyType]
-          [java.util.concurrent Executors Executor TimeUnit]
+          [java.util.concurrent Executors Executor TimeUnit ThreadFactory]
           [io.netty.handler.codec.http DefaultHttpHeaders HttpHeaders]
           [io.netty.handler.codec.http.cookie Cookie]
           [io.netty.util HashedWheelTimer TimerTask]
@@ -15,8 +14,9 @@
 
 (def async-executor
   (delay
-    (Executors/newFixedThreadPool 1
-      (conc/counted-thread-factory "netty core async bridge" true))))
+    (Executors/newFixedThreadPool
+      (dec (.availableProcessors (Runtime/getRuntime)))
+      (Executors/defaultThreadFactory))))
 
 (def netty-timer
   (delay (HashedWheelTimer.)))
@@ -81,7 +81,7 @@
 (defn req
   ([^String url requester thunk opts]
     (let [^AsyncHttpClient client (:client requester)
-          res (async/chan)
+          res (d/onto (d/deferred) @async-executor)
           ^RequestBuilder req (case thunk
                                 :get (.prepareGet client url)
                                 :connect (.prepareConnect client url)
@@ -99,16 +99,18 @@
           (.setHeader req (str k) v)))
       (when-not (nil? (:body opts))
         (.setBody req (:body opts)))
-      (let [^ListenableFuture f (.executeRequest client (.build req))]
-        (.addListener f 
-          (fn []
-            (let [^Response response (.get f)
-                  rm (process-response response (:as opts))]
-              (prn (:status rm) (:status-text rm))
-              ;(if (= (:status rm) 503)
-              ;  (after-time 1000 #(async/>!! res rm))
-                (async/>!! res rm)))
-          ^Executor @async-executor))
+      (.executeRequest client (.build req)
+        (proxy [AsyncCompletionHandler] []
+          (onCompleted [^Response response]
+            (let [rm (process-response response (:as opts))]
+              (if (or (false? (:throw-exceptions opts)) (= (:status rm) 200))
+                (d/success! res rm)
+                (d/error! res
+                  (ex-info
+                    (str "http error: " (:status rm))
+                    rm)))))
+          (onThrowable [^Throwable v]
+            (d/error! res v))))
       res))
   ([url requester thunk]
     (req url requester thunk {}))
