@@ -97,18 +97,15 @@
               job (:job result)
               failed? (or
                         (:error result)
-                        (not (= (:result result)) :success))
+                        (not (= (:result result) :success)))
               nxt (cond
                     (not failed?) inp
                     (< (:ttl job) 1) inp
                     :else (cons (assoc job :ttl (dec (:ttl job))) inp))]
-          (quote
-            (when (:error result)
-              (prn (.getMessage (:error result)))))
           (.add empties rr)
           (recur nxt))
         (let [[job & rst] inp
-              rr (.remove empties)
+              rr (.removeLast empties)
               job (assoc job :ttl 100)
               result-map {:rr rr :job job}]
           (d/on-realized

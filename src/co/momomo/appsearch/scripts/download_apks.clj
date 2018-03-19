@@ -9,29 +9,24 @@
   (import [org.tukaani.xz XZInputStream]
           [java.util.concurrent.atomic AtomicReference]))
 
-(def error (AtomicReference.))
-
 (defn downloader
   [bucket seen f]
   (fn [requester info]
-    (if (and false (contains? @seen (:artifact_name info)))
-      nil
-      (d/chain
-        (f requester info)
-        (fn [url]
-          (prn "a")
-          (.set error url)
-          (if (not (string? url))
-            :error
-            (cr/req url requester :get {:as :byte-array})))
-        (fn [apk-res]
-          (if (or (not (= (:status apk-res) 200))
-                  (ss/includes? (get (:headers apk-res) "content-type") "text/html"))
-            :error
-            (do
-              (d/future (s3/upload! bucket (:artifact_name info) (:body apk-res)))
-              (swap! seen (fn [s] (conj s (:artifact_name info))))
-              :success)))))))
+    (d/chain
+      (f requester info)
+      (fn [url]
+        (prn url)
+        (if (not (string? url))
+          :error
+          (cr/req url requester :get {:as :byte-array})))
+      (fn [apk-res]
+        (if (or (not (= (:status apk-res) 200))
+                (ss/includes? (get (:headers apk-res) "content-type") "text/html"))
+          :error
+          (do
+            (d/future (s3/upload! bucket (:artifact_name info) (:body apk-res)))
+            (swap! seen (fn [s] (conj s (:artifact_name info))))
+            :success))))))
 
 (defn requester-fns
   [bucket seen]
@@ -50,14 +45,15 @@
 
 (defn download-apps!
   [inp-bucket inp-key outp-bucket]
-  (let [;seen (atom (into #{} (s3/list-bucket outp-bucket)))
-        seen (atom #{})
+  (let [seen (atom (into #{} (s3/list-bucket outp-bucket)))
         timeout (System/getProperty "timeout")
         timeout (if timeout (Integer/parseInt timeout) (* 5 60 1000))]
     (->
-      (s3/input-stream inp-bucket inp-key)
-      (XZInputStream.)
-      (cereal/data-seq)
+      (filter #(not (contains? @seen (:artifact_name %)))
+        (->
+          (s3/input-stream inp-bucket inp-key)
+          (XZInputStream.)
+          (cereal/data-seq)))
       (cr/crawl {:timeout timeout} (requester-fns outp-bucket seen)))))
 
 (defn -main

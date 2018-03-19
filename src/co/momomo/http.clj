@@ -4,6 +4,7 @@
             ListenableFuture Response AsyncCompletionHandler]
           [org.asynchttpclient.proxy ProxyType]
           [java.util.concurrent Executors Executor TimeUnit ThreadFactory]
+          [java.util.concurrent.atomic AtomicReference]
           [io.netty.handler.codec.http DefaultHttpHeaders HttpHeaders]
           [io.netty.handler.codec.http.cookie Cookie]
           [io.netty.util HashedWheelTimer TimerTask]
@@ -44,8 +45,7 @@
                 (.setEventLoopGroup @event-loop-group)
                 (.setMaxRequestRetry 0)
                 (.setFollowRedirect true)
-                (.setConnectTimeout 100)
-                (.setRequestTimeout 10000))]
+                (.setConnectTimeout 200))]
     (if (nil? proxy-type)
       (Dsl/asyncHttpClient config)
       (Dsl/asyncHttpClient
@@ -77,6 +77,8 @@
               (map (fn [v] [(.toLowerCase ^String (key v)) (val v)])
                 (.getHeaders response)))
     :cookies (.getCookies response)})
+
+(def error (AtomicReference.))
 
 (defn req
   ([^String url requester thunk opts]
@@ -110,6 +112,7 @@
                     (str "http error: " (:status rm))
                     rm)))))
           (onThrowable [^Throwable v]
+            (.put error v)
             (d/error! res v))))
       res))
   ([url requester thunk]
