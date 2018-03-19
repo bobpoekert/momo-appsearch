@@ -105,9 +105,9 @@
             (let [^Response response (.get f)
                   rm (process-response response (:as opts))]
               (prn (:status rm) (:status-text rm))
-              (if (= (:status rm) 503)
-                (after-time 1000 #(async/>!! res rm))
-                (async/>!! res rm))))
+              ;(if (= (:status rm) 503)
+              ;  (after-time 1000 #(async/>!! res rm))
+                (async/>!! res rm)))
           ^Executor @async-executor))
       res))
   ([url requester thunk]

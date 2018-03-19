@@ -24,19 +24,15 @@
         (if (and false (contains? @seen (:artifact_name info)))
           nil
           (let [url (async/<! (f requester info))]
+            (prn "a")
+            (.set error url)
             (if (not (string? url))
-              (do
-                (if (instance? Throwable url)
-                  (.set error url))
-                :error)
-              (let [res (async/<! (cr/req url requester :get {:as :byte-array :socket-timeout 999999}))]
+              :error
+              (let [res (async/<! (cr/req url requester :get {:as :byte-array}))]
                   (if (or (not (= (:status res) 200))
                           (ss/includes? (get (:headers res) "content-type") "text/html"))
+                    :error
                     (do
-                      (prn (:artifact_name info) "error")
-                      :error)
-                    (do
-                      (prn (:artifact_name info) url)
                       (->
                         (s3/upload! bucket (:artifact_name info) (:body res))
                         (async/thread)
