@@ -5,6 +5,7 @@
            [co.momomo.cereal :as cereal]
            [co.momomo.appsearch.apkd :as apkd]
            [clojure.string :as ss]
+           [clojure.java.io :as io]
            [manifold.deferred :as d])
   (import [org.tukaani.xz XZInputStream]
           [java.util.concurrent.atomic AtomicReference]))
@@ -36,7 +37,7 @@
     [;apkd/lieng-download-url
      apkd/aapk-download-url 
      apkd/apkd-download-url 
-     apkd/apkname-download-url 
+     ;apkd/apkname-download-url 
      apkd/apkfollow-download-url 
      apkd/apkbird-download-url 
      apkd/apkdl-download-url 
@@ -45,19 +46,23 @@
     (map (partial downloader bucket seen))
     (vec)))
 
-(defn download-apps!
-  [inp-bucket inp-key outp-bucket]
-  (let [seen (atom (into #{} (s3/list-bucket outp-bucket)))
+(defn inner-download-apps!
+  [inp-stream  outp-bucket]
+  (let [seen (atom (into #{} (s3/list-bucket outp-bucket)))]
         ;seen (atom #{})
-        timeout (System/getProperty "timeout")
-        timeout (if timeout (Integer/parseInt timeout) (* 5 60 1000))]
     (->
       (filter #(not (contains? @seen (:artifact_name %)))
         (->
-          (s3/input-stream inp-bucket inp-key)
+          inp-stream
           (XZInputStream.)
           (cereal/data-seq)))
-      (cr/crawl {:timeout timeout} (requester-fns outp-bucket seen)))))
+      (cr/crawl {} (requester-fns outp-bucket seen)))))
+
+(defn download-apps!
+  ([inp-bucket inp-key outp-bucket]
+    (inner-download-apps! (s3/input-stream inp-bucket inp-key) outp-bucket))
+  ([inp-fname outp-bucket]
+    (inner-download-apps! (io/input-stream (java.io.File. inp-fname)) outp-bucket)))
 
 (defn -main
   [& args]

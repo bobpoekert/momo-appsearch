@@ -47,8 +47,9 @@
             [ip (Integer/parseInt port)])))
     (vec)))
 
-(def proxies
-  (delay
+(defn get-proxies
+  []
+  (into #{}
     (concat
       (for [[host port] (proxy-hosts "http://filefab.com/api.php?l=Od9bhDRsZz5XCq2_waX09Wcll-DtXOXvHJNe68cZblE")]
         [:http host port])
@@ -56,6 +57,8 @@
         [:socks4 host port])
       (for [[host port] (proxy-hosts "http://filefab.com/api.php?l=P9TdKt1_-xtqwtlCXVASfpGQ6-i3cxYgvTD8Bs2HUSU")]
         [:socks5 host port]))))
+
+(def proxies (delay (get-proxies)))
 
 (defn pick-random
   [v]
@@ -73,37 +76,43 @@
 
 (defn requesters
   [requester-fns]
-  (for [thunk requester-fns [proxy-type proxy-host proxy-port] @proxies]
+  (for [thunk requester-fns [proxy-type proxy-host proxy-port] (get-proxies)]
     (make-requester thunk proxy-type proxy-host proxy-port)))
 
 (defn crawl
   [inp opts requester-fns]
-  (let [^ArrayDeque empties (ArrayDeque. ^java.util.Collection (requesters requester-fns))
+  (let [get-empties #(ArrayDeque. ^java.util.Collection (requesters requester-fns))
         ^LinkedBlockingQueue results (LinkedBlockingQueue. 20)]
-    (loop [inp inp]
-      (if (< (.size empties) 1) 
-        (let [result (.take results)
-              rr (:rr result)
-              job (:job result)
-              failed? (or
-                        (:error result)
-                        (not (= (:result result) :success)))
-              nxt (cond
-                    (not failed?) inp
-                    (< (:ttl job) 1) inp
-                    :else (cons (assoc job :ttl (dec (:ttl job))) inp))]
-          (.add empties rr)
-          (recur nxt))
-        (let [[job & rst] inp
-              rr (.removeLast empties)
-              job (assoc job :ttl 100)
-              result-map {:rr rr :job job}]
-          (d/on-realized
-            ((:thunk rr) rr job)
-            (fn [result]
-              (.put results
-                (assoc result-map :result result)))
-            (fn [error]
-              (.put results
-                (assoc result-map :error error))))
-          (recur rst))))))
+    (loop [inp inp
+           last-refresh (System/currentTimeMillis)
+           ^ArrayDeque empties (get-empties)] 
+      (cond
+        (>= (- (System/currentTimeMillis) last-refresh) (* 30 60 1000))
+          (recur inp (System/currentTimeMillis) (get-empties))
+        (< (.size empties) 1) 
+          (let [result (.take results)
+                rr (:rr result)
+                job (:job result)
+                failed? (or
+                          (:error result)
+                          (not (= (:result result) :success)))
+                nxt (cond
+                      (not failed?) inp
+                      (< (:ttl job) 1) inp
+                      :else (cons (assoc job :ttl (dec (:ttl job))) inp))]
+            (.addFirst empties rr)
+            (recur nxt last-refresh empties))
+        :else
+          (let [[job & rst] inp
+                rr (.removeLast empties)
+                job (if (:ttl job) job (assoc job :ttl 20))
+                result-map {:rr rr :job job}]
+            (d/on-realized
+              ((:thunk rr) rr job)
+              (fn [result]
+                (.put results
+                  (assoc result-map :result result)))
+              (fn [error]
+                (.put results
+                  (assoc result-map :error error))))
+            (recur rst last-refresh empties))))))
