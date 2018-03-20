@@ -4,7 +4,7 @@
            [clj-http.client :as http])
   (import [java.util.concurrent
             LinkedBlockingQueue BlockingQueue CountDownLatch TimeUnit]
-          [org.tukaani.xz XZInputStream]))
+          [org.tukaani.xz XZInputStream XZOutputStream LZMA2Options]))
 
 (defn queue-seq
   [^LinkedBlockingQueue inp]
@@ -78,6 +78,13 @@
       (queue-seq outq)))
   ([inp transducer]
     (parmap inp {} transducer)))
+
+(defn data-into-file!
+  [inp outf]
+  (with-open [outs (XZOutputStream. (io/output-stream outf) (LZMA2Options.))]
+    (let [douts (fress/create-writer outs)]
+      (doseq [row inp]
+        (fress/write-object douts row)))))
 
 (defn par-process-into-file!
   ([inp opts transducer outs]

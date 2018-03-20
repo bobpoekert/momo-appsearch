@@ -78,8 +78,6 @@
                 (.getHeaders response)))
     :cookies (.getCookies response)})
 
-(def error (AtomicReference.))
-
 (defn req
   ([^String url requester thunk opts]
     (let [^AsyncHttpClient client (:client requester)
@@ -99,6 +97,12 @@
       (when-not (nil? (:headers opts))
         (doseq [[k v] (:headers opts)]
           (.setHeader req (str k) v)))
+      (when-not (nil? (:form opts))
+        (->>
+          (:form opts)
+          (map (fn [[k v]] [(str k) (if (string? v) (list v) (map str v))]))
+          ^java.util.Map (into {})
+          (.setFormParams req)))
       (when-not (nil? (:body opts))
         (.setBody req (:body opts)))
       (.executeRequest client (.build req)
@@ -112,7 +116,6 @@
                     (str "http error: " (:status rm))
                     rm)))))
           (onThrowable [^Throwable v]
-            (.put error v)
             (d/error! res v))))
       res))
   ([url requester thunk]

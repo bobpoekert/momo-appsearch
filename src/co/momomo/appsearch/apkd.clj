@@ -185,3 +185,21 @@
       (cr/req requester :get))
     (fn [page]
       (apkp/extract-download-url (:body page)))))
+
+(defn apkbiz-download-url
+  [requester job]
+  (d/chain
+    (->
+      (str "https://apkpure.biz/hi/" (:artifact_name job) "/a/download")
+      (cr/req requester :get))
+    (fn [page]
+      (let [tree (Jsoup/parse (:body page))
+            f (first (select-attr tree "data-f" (any-pos (has-class "box-details"))))
+            ac (first (select-attr tree "data-f" (any-pos (has-class "downbtn"))))]
+        (cr/req "https://apkpure.biz/ax.php" requester :post {:form {"f" f "ac" ac}})))
+    (fn [rsp]
+      (->
+        (:body rsp)
+        (Jsoup/parse)
+        (select-attr "href" (any-pos (tag "a")))
+        (first)))))
