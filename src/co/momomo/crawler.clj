@@ -65,26 +65,16 @@
 
 (def req http/req)
 
-(defn get-body-or-throw
-  [res]
-  (prn (:status res))
-  (if (= (:status res) 200)
-    (:body res)
-    (throw (RuntimeException. (str "status: " (:status res))))))
-
 (defn make-requester
   [thunk proxy-protocol proxy-host proxy-port]
   (->Requester thunk
     (http/build-client proxy-protocol proxy-host proxy-port) 
-    {"User-Agnent" (pick-random @user-agents)}))
+    {"User-Agent" (pick-random @user-agents)}))
 
 (defn requesters
   [requester-fns]
-  (concat
-    (for [thunk requester-fns [proxy-type proxy-host proxy-port] @proxies]
-      (make-requester thunk proxy-type proxy-host proxy-port))
-    (for [thunk requester-fns]
-      (make-requester thunk nil nil nil))))
+  (for [thunk requester-fns [proxy-type proxy-host proxy-port] @proxies]
+    (make-requester thunk proxy-type proxy-host proxy-port)))
 
 (defn crawl
   [inp opts requester-fns]

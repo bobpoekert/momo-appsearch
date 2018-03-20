@@ -15,23 +15,25 @@
     (d/chain
       (f requester info)
       (fn [url]
-        (prn url)
         (if (not (string? url))
           :error
-          (cr/req url requester :get {:as :byte-array})))
+          (do (prn url)
+            (cr/req url requester :get {:as :byte-array}))))
       (fn [apk-res]
         (if (or (not (= (:status apk-res) 200))
                 (ss/includes? (get (:headers apk-res) "content-type") "text/html"))
           :error
           (do
-            (d/future (s3/upload! bucket (:artifact_name info) (:body apk-res)))
+            (future 
+              (prn [bucket (:artifact_name info)])
+              (s3/upload! bucket (:artifact_name info) (:body apk-res)))
             (swap! seen (fn [s] (conj s (:artifact_name info))))
             :success))))))
 
 (defn requester-fns
   [bucket seen]
   (->>
-    [apkd/lieng-download-url
+    [;apkd/lieng-download-url
      apkd/aapk-download-url 
      apkd/apkd-download-url 
      apkd/apkname-download-url 
@@ -46,6 +48,7 @@
 (defn download-apps!
   [inp-bucket inp-key outp-bucket]
   (let [seen (atom (into #{} (s3/list-bucket outp-bucket)))
+        ;seen (atom #{})
         timeout (System/getProperty "timeout")
         timeout (if timeout (Integer/parseInt timeout) (* 5 60 1000))]
     (->

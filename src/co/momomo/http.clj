@@ -16,7 +16,7 @@
 (def async-executor
   (delay
     (Executors/newFixedThreadPool
-      (dec (.availableProcessors (Runtime/getRuntime)))
+      (max 1 (dec (.availableProcessors (Runtime/getRuntime))))
       (Executors/defaultThreadFactory))))
 
 (def netty-timer

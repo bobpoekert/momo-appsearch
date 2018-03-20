@@ -10,6 +10,13 @@
           [org.apache.http.client.utils URLEncodedUtils]
           [org.apache.http NameValuePair]))
 
+(def testv (java.util.concurrent.atomic.AtomicReference.))
+(defn dbg-print
+  [v]
+  (.set testv v)
+  (prn v)
+  v)
+
 (defn apkd-download-url
   [requester job]
   (d/chain
@@ -20,11 +27,11 @@
       (-> res
         (:body)
         (Jsoup/parse)
-        (select-attr "href"
+        (select-attr "action"
           (any-pos
-            (%and
-              (tag "a")
-              (kv "id" "btn-download"))))
+            (path
+              (has-class "download-box")
+              (tag "form"))))
         (first)))))
 
 (defn apkname-download-url
@@ -94,11 +101,11 @@
       (->
         (:body res)
         (Jsoup/parse)
-        (select-attr "href"
+        (select-attr "action"
           (any-pos
             (path
               (%and (tag "div") (has-class "download-box"))
-              (%and (tag "a") (kv "id" "btn-download")))))
+              (tag "form"))))
         (first)))))
 
 (defn apkdroid-download-url
@@ -124,13 +131,14 @@
                 (get "url"))]
         (if (ss/includes? outp "downloadatoz.com") nil outp)))))
 
+
 (defn lieng-download-url
   [requester job]
   (d/chain
     (->
-      (str 
-        "http://choilieng.com/apk-on-pc/'http://choilieng.com/apk-on-pc/"
-        (:artifact_name job) "?PageSpeed=noscript%27")
+      (format
+        "http://choilieng.com/apk-on-pc/%s"
+        (:artifact_name job))
       (cr/req requester :get))
     (fn [page]
       (->>
@@ -143,28 +151,20 @@
                 (tag "a")
                 (has-class "top-download")
                 (kv "itemprop" "downloadUrl"))))
-          ^String (first)
-          (URI.)
-          (URLEncodedUtils/parse "UTF-8"))
-        (map (fn [^NameValuePair kv]
-              (if (= (.getName kv) "appid")
-                (str "appid=" (:artifact_name job) "_appnaz.com_")
-                (str (.getName kv) "=" (.getValue kv)))))
-        (ss/join "&")
-        (str "http://choilieng.com/download?")))))
+          (first))))))
 
 (defn aapk-download-url
   [requester job]
   (let [btn-selector (any-pos
                       (%and (tag "a") (has-class "btn-download1")))
-        download-page-url (str "https://androidappsapk.co/download/" (:artifact_name job))]
+        download-page-url (str "https://androidappsapk.co/download/" (:artifact_name job) "/")]
     (d/chain
       (->
         download-page-url
         (cr/req requester :get))
       (fn [page]
         (->
-          (:body page)
+          (:body)
           (Jsoup/parse)
           (select-attr "href" btn-selector)
           (first)
