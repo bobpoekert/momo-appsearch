@@ -1,7 +1,8 @@
 (ns co.momomo.http
   (require [manifold.deferred :as d])
   (import [org.asynchttpclient Dsl AsyncHttpClient RequestBuilder
-            ListenableFuture Response AsyncCompletionHandler]
+            ListenableFuture Response AsyncCompletionHandler HttpResponseBodyPart
+            AsyncHandler$State]
           [org.asynchttpclient.proxy ProxyType]
           [java.util.concurrent Executors Executor TimeUnit ThreadFactory]
           [java.util.concurrent.atomic AtomicReference]
@@ -45,6 +46,7 @@
                 (.setEventLoopGroup @event-loop-group)
                 (.setMaxRequestRetry 0)
                 (.setFollowRedirect true)
+                (.setRequestTimeout (* 20 60 1000))
                 (.setConnectTimeout 200))]
     (if (nil? proxy-type)
       (Dsl/asyncHttpClient config)
@@ -63,16 +65,16 @@
           (.build))))))
 
 (defn process-response
-  [^Response response response-as]
+  [^Response response opts]
   {:status (.getStatusCode response)
    :status-text (.getStatusText response)
-   :body (case response-as
-           :byte-array (.getResponseBodyAsBytes response)
-           :byte-buffer (.getResponseBodyAsByteBuffer response)
-           :stream (.getResponseBodyAsStream response)
-           (if (string? response-as)
-            (.getResponseBody response ^String response-as)
-            (.getResponseBody response)))
+   :body (cond
+           (:body-callback opts) nil
+           (= (:as opts) :byte-array) (.getResponseBodyAsBytes response)
+           (= (:as opts) :byte-buffer) (.getResponseBodyAsByteBuffer response)
+           (= (:as opts) :stream) (.getResponseBodyAsStream response)
+           (string? (:as opts)) (.getResponseBody response ^String (:as opts))
+           :else (.getResponseBody response))
     :headers (into {}
               (map (fn [v] [(.toLowerCase ^String (key v)) (val v)])
                 (.getHeaders response)))
@@ -105,18 +107,25 @@
           (.setFormParams req)))
       (when-not (nil? (:body opts))
         (.setBody req (:body opts)))
-      (.executeRequest client (.build req)
-        (proxy [AsyncCompletionHandler] []
-          (onCompleted [^Response response]
-            (let [rm (process-response response (:as opts))]
-              (if (or (false? (:throw-exceptions opts)) (= (:status rm) 200))
-                (d/success! res rm)
-                (d/error! res
-                  (ex-info
-                    (str "http error: " (:status rm))
-                    rm)))))
-          (onThrowable [^Throwable v]
-            (d/error! res v))))
+      (let [cb (:body-callback opts)]
+        (.executeRequest client (.build req)
+          (proxy [AsyncCompletionHandler] []
+            (onCompleted [^Response response]
+              (let [rm (process-response response opts)]
+                (if (or (false? (:throw-exceptions opts)) (= (:status rm) 200))
+                  (d/success! res rm)
+                  (d/error! res
+                    (ex-info
+                      (str "http error: " (:status rm))
+                      rm)))))
+            (onThrowable [^Throwable v]
+              (d/error! res v))
+            (onBodyPartReceived [^HttpResponseBodyPart part]
+              (if (nil? cb)
+                (proxy-super onBodyPartReceived part)
+                (do
+                  (cb (.getBodyPartBytes part))
+                  AsyncHandler$State/CONTINUE))))))
       res))
   ([url requester thunk]
     (req url requester thunk {}))

@@ -44,6 +44,10 @@
   ([^String bucket ^String k ^bytes data]
     (upload! bucket k (ByteArrayInputStream. data) (alength data))))
 
+(defn upload-file!
+  [^String bucket ^String k ^java.io.File fd]
+  (.putObject @s3-client (PutObjectRequest. bucket k fd)))
+
 (defn stream-http-response!
   [bucket k response]
   (let [content-length (get (:headers response) "Content-Length")
