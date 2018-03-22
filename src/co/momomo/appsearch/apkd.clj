@@ -164,6 +164,7 @@
         (cr/req requester :get))
       (fn [page]
         (->
+          page
           (:body)
           (Jsoup/parse)
           (select-attr "href" btn-selector)
