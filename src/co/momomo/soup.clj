@@ -2,14 +2,19 @@
   (import [org.jsoup Jsoup]
           [org.jsoup.nodes Node Element]
           [org.jsoup.select Collector Evaluator CombiningEvaluator CombiningEvaluator$And CombiningEvaluator$Or
-           StructuralEvaluator CombiningEvaluatorWrapper]
+           StructuralEvaluator CombiningEvaluatorWrapper Elements]
           [co.momomo EvaluatorFn]))
 
 (set! *warn-on-reflection* true)
 
-(defn ^String get-text
-  [^Element e]
-  (.text e))
+(defprotocol GetText
+  (get-text [e]))
+
+(extend-protocol GetText
+  Element
+  (get-text [e] (.text e))
+  Elements
+  (get-text [e] (.text e)))
 
 (defn select
   [^Element root ^Evaluator selector]

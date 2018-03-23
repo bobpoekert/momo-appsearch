@@ -1,5 +1,7 @@
 (ns co.momomo.http
-  (require [manifold.deferred :as d])
+  (require [manifold.deferred :as d]
+           [clojure.data.xml :as xml]
+           [clojure.java.io :as io])
   (import [org.asynchttpclient Dsl AsyncHttpClient RequestBuilder
             ListenableFuture Response AsyncCompletionHandler HttpResponseBodyPart
             AsyncHandler$State]
@@ -26,7 +28,7 @@
 (def event-loop-group
   (delay
     (if (Epoll/isAvailable)
-      (EpollEventLoopGroup. 1)
+      (EpollEventLoopGroup. 2)
       (NioEventLoopGroup. 8))))
 
 (defn after-time
@@ -36,33 +38,69 @@
     (proxy [TimerTask] []
       (run [t]
         (thunk)))
-    millis TimeUnit/MILLISECONDS))
+    (long millis) TimeUnit/MILLISECONDS))
+
+(defn time-deferred
+  [millis]
+  (let [res (d/deferred)]
+    (after-time millis
+      #(d/success! res true))
+    res))
+
+(def user-agents
+  (delay
+    (->>
+      (io/resource "useragentswitcher.xml")
+      (io/reader)
+      (xml/parse)
+      (tree-seq #(not (nil? (:content %))) :content)
+      (map #(:useragent (:attrs %)))
+      (filter (complement nil?))
+      (vec))))
+
 
 (defn build-client
-  [proxy-type proxy-host proxy-port]
-  (let [config (->
-                (Dsl/config)
-                (.setNettyTimer @netty-timer)
-                (.setEventLoopGroup @event-loop-group)
-                (.setMaxRequestRetry 0)
-                (.setFollowRedirect true)
-                (.setRequestTimeout (* 20 60 1000))
-                (.setConnectTimeout 200))]
-    (if (nil? proxy-type)
-      (Dsl/asyncHttpClient config)
-      (Dsl/asyncHttpClient
-        (->
-          config
-          (.setProxyServer 
-            (->
-              (Dsl/proxyServer proxy-host proxy-port)
-              (.setProxyType
-                (case proxy-type
-                  :http ProxyType/HTTP
-                  :socks4 ProxyType/SOCKS_V4
-                  :socks5 ProxyType/SOCKS_V5))
-              (.build)))
-          (.build))))))
+  ([proxy-type proxy-host proxy-port connect-timeout]
+    (let [config (->
+                  (Dsl/config)
+                  (.setNettyTimer @netty-timer)
+                  (.setEventLoopGroup @event-loop-group)
+                  (.setMaxRequestRetry 0)
+                  (.setFollowRedirect true)
+                  (.setRequestTimeout (* 20 60 1000))
+                  (.setConnectTimeout connect-timeout))]
+      (if (nil? proxy-type)
+        (Dsl/asyncHttpClient config)
+        (Dsl/asyncHttpClient
+          (->
+            config
+            (.setProxyServer 
+              (->
+                (Dsl/proxyServer proxy-host proxy-port)
+                (.setProxyType
+                  (case proxy-type
+                    :http ProxyType/HTTP
+                    :socks4 ProxyType/SOCKS_V4
+                    :socks5 ProxyType/SOCKS_V5))
+                (.build)))
+            (.build))))))
+  ([proxy-type proxy-host proxy-port]
+    (build-client proxy-type proxy-host proxy-port 500)))
+
+(defn pick-random
+  [v]
+  (nth v (int (* (Math/random) (count v)))))
+
+(defn random-user-agent
+  []
+  (pick-random @user-agents))
+
+(defn make-requester
+  [& args]
+  {:client (apply build-client args)
+   :headers {"User-Agent" (random-user-agent)}})
+
+(def default-requester (delay (make-requester nil nil nil 1000)))
 
 (defn process-response
   [^Response response opts]
@@ -111,13 +149,15 @@
         (.executeRequest client (.build req)
           (proxy [AsyncCompletionHandler] []
             (onCompleted [^Response response]
-              (let [rm (process-response response opts)]
-                (if (or (false? (:throw-exceptions opts)) (= (:status rm) 200))
-                  (d/success! res rm)
-                  (d/error! res
-                    (ex-info
-                      (str "http error: " (:status rm))
-                      rm)))))
+              (let [rm (process-response response opts)
+                    error! #(d/error! res
+                            (ex-info
+                              (str "http error: " (:status rm))
+                              rm))]
+                (cond
+                  (or (false? (:throw-exceptions opts)) (= (:status rm) 200)) (d/success! res rm)
+                  (= (:status rm) 503) (after-time 1000 error!)
+                  :else (error!))))
             (onThrowable [^Throwable v]
               (d/error! res v))
             (onBodyPartReceived [^HttpResponseBodyPart part]
@@ -129,5 +169,5 @@
       res))
   ([url requester thunk]
     (req url requester thunk {}))
-  ([url requester]
-    (req url requester :get)))
+  ([url thunk]
+    (req url @default-requester thunk)))

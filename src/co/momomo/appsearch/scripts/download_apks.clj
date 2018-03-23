@@ -1,6 +1,7 @@
 (ns co.momomo.appsearch.scripts.download-apks
   (:gen-class)
   (require [co.momomo.crawler :as cr]
+           [co.momomo.http :as http]
            [co.momomo.s3 :as s3]
            [co.momomo.cereal :as cereal]
            [co.momomo.appsearch.apkd :as apkd]
@@ -9,8 +10,6 @@
            [manifold.deferred :as d])
   (import [org.tukaani.xz XZInputStream]
           [java.io File OutputStream]))
-
-(def bare-rr (delay (cr/make-requester nil nil nil nil)))
 
 (def temp-dir "/mnt")
 
@@ -21,9 +20,13 @@
 (defn download-to-file!
   [url rr outf]
   (let [^OutputStream outs (io/output-stream outf)
-        cb (fn [^bytes b] (.write outs b))]
+        cb (fn [^bytes b] (.write outs b))
+        res (cr/req url rr :get {:body-callback cb})]
+    (d/on-realized res
+      (fn [v] nil)
+      (fn [^Throwable e] (prn (.getMessage e))))
     (d/finally
-      (cr/req url rr :get {:body-callback cb}) 
+      res
       #(.close outs))))
 
 (defn downloader
@@ -40,7 +43,7 @@
               (do
                 (prn url)
                 (d/catch
-                  (download-to-file! url @bare-rr outf)
+                  (download-to-file! url @http/default-requester outf)
                   (download-to-file! url requester outf)))))
           (fn [apk-res]
             (if (or (not (= (:status apk-res) 200))
@@ -79,11 +82,12 @@
   (let [seen (atom (into #{} (map (fn [^String s] (.trim s)) (line-seq (io/reader (io/file "seen.txt"))))))]
         ;seen (atom #{})
     (->
-      (filter #(and (:artifact_name %) (not (contains? @seen (:artifact_name %))))
-        (->
-          inp-stream
-          (XZInputStream.)
-          (cereal/data-seq)))
+      (drop 100000
+        (filter #(and (:artifact_name %) (not (contains? @seen (:artifact_name %))))
+          (->
+            inp-stream
+            (XZInputStream.)
+            (cereal/data-seq))))
       (cr/crawl {} (requester-fns outp-bucket seen)))))
 
 (defn download-apps!
