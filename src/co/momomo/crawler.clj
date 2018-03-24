@@ -59,8 +59,8 @@
   [rrs]
   (d/chain
     (apply d/zip
-      (map (partial proxycz-hosts rrs) (range 150))))
-    #(apply concat %))
+      (map (partial proxycz-hosts rrs) (range 15)))
+    #(apply concat %)))
 
 (defn filefab-proxies
   []
@@ -147,7 +147,7 @@
       (let [ff-requesters (map #(apply http/make-requester %) filefab)]
         (d/zip
           (d/success-deferred filefab)
-          (proxycz-proxies ff-requesters)
+         ; (proxycz-proxies ff-requesters)
           (spys-proxies ff-requesters {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "0" "xpp" "5"})
           (spys-proxies ff-requesters {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "1" "xpp" "5"})
           (spys-proxies ff-requesters {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "2" "xpp" "5"}))))
