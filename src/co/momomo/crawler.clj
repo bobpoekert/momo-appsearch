@@ -35,9 +35,9 @@
     (.decode v)))
 
 (defn proxycz-hosts
-  [rr page-number]
+  [rrs page-number]
   (d/chain
-    (http/req (str "http://free-proxy.cz/en/proxylist/main/" page-number) rr :get)
+    (http/req-retry (str "http://free-proxy.cz/en/proxylist/main/" page-number) rrs :get)
     (fn [page]
       (let [root (second (re-find #"\<table id=\"proxy_list\">(.*)\</table\>" (:body page)))]
         (for [row (re-seq #"\<tr\>(.*?)\</tr\>" root)]
@@ -56,10 +56,10 @@
               [protocol ip port]))))))
 
 (defn proxycz-proxies
-  [rr]
+  [rrs]
   (d/chain
     (apply d/zip
-      (map (partial proxycz-hosts rr) (range 150))))
+      (map (partial proxycz-hosts rrs) (range 150))))
     #(apply concat %))
 
 (defn filefab-proxies
@@ -73,9 +73,9 @@
       (map (fn [[h p]] [:socks5 h p]) socks5))))
 
 (defn spys-proxies
-  [params]
+  [requesters params]
   (d/chain
-    (http/req "http://spys.one/en/socks-proxy-list/" @http/default-requester :post
+    (http/req-retry "http://spys.one/en/socks-proxy-list/" requesters :post
       {:form params})
     (fn [rsp]
       (let [tree (Jsoup/parse (:body rsp))
@@ -142,17 +142,19 @@
 (defn get-proxies
   []
   (d/chain
-    (d/zip
-      (filefab-proxies)
-      (spys-proxies {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "0" "xpp" "5"})
-      (spys-proxies {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "1" "xpp" "5"})
-      (spys-proxies {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "2" "xpp" "5"}))
-    (fn [v]
-      (->>
-        (apply concat v)
+    (filefab-proxies)
+    (fn [filefab]
+      (let [ff-requesters (map #(apply http/make-requester %) filefab)]
+        (d/zip
+          (d/success-deferred filefab)
+          (proxycz-proxies ff-requesters)
+          (spys-proxies ff-requesters {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "0" "xpp" "5"})
+          (spys-proxies ff-requesters {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "1" "xpp" "5"})
+          (spys-proxies ff-requesters {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "2" "xpp" "5"}))))
+    (fn [results]
+      (->> results
+        (apply concat)
         (into #{})))))
-
-(def proxies (delay @(get-proxies)))
 
 (def req http/req)
 
@@ -164,9 +166,10 @@
 
 (defn requesters
   [requester-fns]
-  (for [thunk requester-fns
-        [proxy-type proxy-host proxy-port] @(get-proxies)]
-    (make-requester thunk proxy-type proxy-host proxy-port)))
+  (let [proxies @(get-proxies)]
+    (for [thunk requester-fns
+          [proxy-type proxy-host proxy-port] proxies]
+      (make-requester thunk proxy-type proxy-host proxy-port))))
 
 (defn crawl
   [inp opts requester-fns]
@@ -176,8 +179,8 @@
            last-refresh (System/currentTimeMillis)
            ^ArrayDeque empties (get-empties)] 
       (cond
-       ; (>= (- (System/currentTimeMillis) last-refresh) (* 30 60 1000))
-       ;   (recur inp (System/currentTimeMillis) (get-empties))
+        ;(>= (- (System/currentTimeMillis) last-refresh) (* 30 60 1000))
+        ;  (recur inp (System/currentTimeMillis) (get-empties))
         (< (.size empties) 1) 
           (let [result (.take results)
                 rr (:rr result)
@@ -189,7 +192,8 @@
                       (not failed?) inp
                       (< (:ttl job) 1) inp
                       :else (cons (assoc job :ttl (dec (:ttl job))) inp))]
-            (.addFirst empties rr)
+            (when-not (instance? java.net.ConnectException (:error result))
+              (.addFirst empties rr))
             (recur nxt last-refresh empties))
         :else
           (let [[job & rst] inp

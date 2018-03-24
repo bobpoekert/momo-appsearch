@@ -28,7 +28,7 @@
 (def event-loop-group
   (delay
     (if (Epoll/isAvailable)
-      (EpollEventLoopGroup. 2)
+      (EpollEventLoopGroup. (max 1 (dec (.availableProcessors (Runtime/getRuntime)))))
       (NioEventLoopGroup. 8))))
 
 (defn after-time
@@ -171,3 +171,15 @@
     (req url requester thunk {}))
   ([url thunk]
     (req url @default-requester thunk)))
+
+(defn- inner-req-retry
+  [url requesters args error]
+  (if (seq requesters)
+    (d/catch
+      (apply req url (first requesters) args)
+      (partial inner-req-retry url (rest requesters) args))
+    (d/error-deferred error)))
+
+(defn req-retry
+  [url requesters & args]
+  (inner-req-retry url requesters args nil))

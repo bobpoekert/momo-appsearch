@@ -42,9 +42,7 @@
               :error
               (do
                 (prn url)
-                (d/catch
-                  (download-to-file! url @http/default-requester outf)
-                  (download-to-file! url requester outf)))))
+                (download-to-file! url requester outf))))
           (fn [apk-res]
             (if (or (not (= (:status apk-res) 200))
                     (ss/includes? (get (:headers apk-res) "content-type") "text/html"))
@@ -82,12 +80,11 @@
   (let [seen (atom (into #{} (map (fn [^String s] (.trim s)) (line-seq (io/reader (io/file "seen.txt"))))))]
         ;seen (atom #{})
     (->
-      (drop 100000
-        (filter #(and (:artifact_name %) (not (contains? @seen (:artifact_name %))))
-          (->
-            inp-stream
-            (XZInputStream.)
-            (cereal/data-seq))))
+      (filter #(and (:artifact_name %) (not (contains? @seen (:artifact_name %))))
+        (->
+          inp-stream
+          (XZInputStream.)
+          (cereal/data-seq)))
       (cr/crawl {} (requester-fns outp-bucket seen)))))
 
 (defn download-apps!
