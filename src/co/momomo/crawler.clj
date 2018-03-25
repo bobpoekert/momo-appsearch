@@ -5,7 +5,7 @@
            [clojure.string :as ss]
            [manifold.deferred :as d]
            [co.momomo.http :as http])
-  (import [java.util.concurrent LinkedBlockingQueue]
+  (import [java.util.concurrent LinkedBlockingQueue TimeUnit]
           [java.net Socket InetSocketAddress]
           [java.util ArrayDeque HashMap]
           [com.google.common.io BaseEncoding]
@@ -78,6 +78,7 @@
     (http/req-retry "http://spys.one/en/socks-proxy-list/" requesters :post
       {:form params})
     (fn [rsp]
+      (prn (:status rsp))
       (let [tree (Jsoup/parse (:body rsp))
             consts-js (second (re-find #"<script type=\"text/javascript\">(.*?)</script>" (:body rsp)))
             xor-eval (fn [consts expr]
@@ -127,16 +128,21 @@
                           (soup/kv "colspan" "1")))]
               (if (< (count cols) 2)
                 nil
-                (let [host (second (ss/split (.text (first cols)) #"\s+"))
-                      protocol (.trim (soup/get-text (second cols)))
-                      port-js (second (re-find #"<script type=\"text/javascript\">(.*?)</script>" (.outerHtml row)))
-                      port (parse-port port-js)]
-                  [
-                    (cond
-                      (ss/includes? protocol "SOCKS5") :socks5
-                      (ss/includes? protocol "SOCKS4") :socks4
-                      (ss/includes? protocol "HTTP") :http)
-                    host port])))))))))
+                (try
+                  (let [host (second (ss/split (.text (first cols)) #"\s+"))
+                        protocol (.trim (soup/get-text (second cols)))
+                        port-js (second (re-find #"<script type=\"text/javascript\">(.*?)</script>" (.outerHtml row)))
+                        port (parse-port port-js)]
+                    [
+                      (cond
+                        (ss/includes? protocol "SOCKS5") :socks5
+                        (ss/includes? protocol "SOCKS4") :socks4
+                        (ss/includes? protocol "HTTP") :http)
+                      host port])
+                  (catch Exception e
+                    (do
+                      (prn e)
+                      nil)))))))))))
 
 (defn local-proxy-list
   []
@@ -181,30 +187,31 @@
           px proxies]
       (assoc px :thunk thunk))))
 
+
 (defn crawl
   [inp opts requester-fns]
-  (let [get-empties #(ArrayDeque. ^java.util.Collection (requesters requester-fns))
+  (let [^ArrayDeque empties (ArrayDeque. ^java.util.Collection (requesters requester-fns))
         ^LinkedBlockingQueue results (LinkedBlockingQueue. 20)]
+    (prn "start")
     (loop [inp inp
-           last-refresh (System/currentTimeMillis)
-           ^ArrayDeque empties (get-empties)] 
+           last-refresh (System/currentTimeMillis)]
       (cond
-        ;(>= (- (System/currentTimeMillis) last-refresh) (* 30 60 1000))
-        ;  (recur inp (System/currentTimeMillis) (get-empties))
-        (< (.size empties) 1) 
-          (let [result (.take results)
-                rr (:rr result)
-                job (:job result)
-                failed? (or
-                          (:error result)
-                          (not (= (:result result) :success)))
-                nxt (cond
-                      (not failed?) inp
-                      (< (:ttl job) 1) inp
-                      :else (cons (assoc job :ttl (dec (:ttl job))) inp))]
-            (when-not (instance? java.net.ConnectException (:error result))
-              (.addFirst empties rr))
-            (recur nxt last-refresh empties))
+        (or (< (.size empties) 200) (< (let [r (Runtime/getRuntime)] (- (.maxMemory r) (- (.totalMemory r) (.freeMemory r)))) (* 1000 1000 1000)))
+          (let [result (.poll results 100 TimeUnit/MILLISECONDS)]
+            (if (nil? result)
+              (recur inp last-refresh)
+              (let [rr (:rr result)
+                    job (:job result)
+                    failed? (or
+                              (:error result)
+                              (not (= (:result result) :success)))
+                    nxt (cond
+                          (not failed?) inp
+                          (< (:ttl job) 1) inp
+                          :else (cons (assoc job :ttl (dec (:ttl job))) inp))]
+                (when-not (instance? java.net.ConnectException (:error result))
+                  (.addFirst empties rr))
+                (recur nxt last-refresh))))
         :else
           (let [[job & rst] inp
                 rr (.removeLast empties)
@@ -218,4 +225,4 @@
               (fn [error]
                 (.put results
                   (assoc result-map :error error))))
-            (recur rst last-refresh empties))))))
+            (recur rst last-refresh))))))
