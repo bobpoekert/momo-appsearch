@@ -8,6 +8,7 @@
             ObjectMetadata ObjectListing S3ObjectSummary]
           [com.amazonaws.auth
             BasicAWSCredentials AWSStaticCredentialsProvider]))
+(set! *warn-on-reflection* true)
 
 (defn ^AWSStaticCredentialsProvider creds
   [^String access-key ^String secret]
@@ -20,18 +21,20 @@
         (creds (first lines) (second lines))))))
 
 (def s3-client
-  (delay (AmazonS3Client. @default-creds)))
+  (delay (AmazonS3Client. ^AWSStaticCredentialsProvider @default-creds)))
+
+
 
 (defn ^InputStream input-stream
   [^String bucket ^String k]
   (->
-    @s3-client
+    ^AmazonS3Client @s3-client
     (.getObject (GetObjectRequest. bucket k))
     (.getObjectContent)))
 
 (defn ^OutputStream output-stream
   [^String bucket ^String k]
-  (S3UploadOutputStream/create @s3-client bucket k))
+  (S3UploadOutputStream/create ^AmazonS3Client @s3-client bucket k))
 
 (defn upload!
   ([^String bucket ^String k ^InputStream ins data-size]
@@ -39,14 +42,14 @@
       (when-not (nil? data-size)
         (.setContentLength m data-size))
       (.putObject
-        @s3-client
+        ^AmazonS3Client ^AmazonS3Client @s3-client
         (PutObjectRequest. bucket k ins m))))
   ([^String bucket ^String k ^bytes data]
     (upload! bucket k (ByteArrayInputStream. data) (alength data))))
 
 (defn upload-file!
   [^String bucket ^String k ^java.io.File fd]
-  (.putObject @s3-client (PutObjectRequest. bucket k fd)))
+  (.putObject ^AmazonS3Client @s3-client (PutObjectRequest. bucket k fd)))
 
 (defn stream-http-response!
   [bucket k response]
@@ -56,7 +59,7 @@
       (upload! bucket k ins content-length))))
 
 (defn- inner-list-bucket
-  [s3 listing]
+  [^AmazonS3Client s3 ^ObjectListing listing]
   (if (.isTruncated listing)
     (concat
       (.getObjectSummaries (.listNextBatchOfObjects s3 listing))
@@ -65,7 +68,7 @@
 
 (defn list-bucket-summaries
   ([bucket prefix]
-    (let [s3 @s3-client
+    (let [^AmazonS3Client s3 @s3-client
           ^ObjectListing listing (.listObjects s3 bucket prefix)
           ^java.util.List summaries (.getObjectSummaries listing)]
       (loop [listing listing]

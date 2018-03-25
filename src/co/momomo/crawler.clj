@@ -138,23 +138,33 @@
                       (ss/includes? protocol "HTTP") :http)
                     host port])))))))))
 
+(defn local-proxy-list
+  []
+  (with-open [ins (io/reader (io/resource "vipsocks.txt"))]
+    (->
+      (for [row (line-seq ins)]
+        (let [[k v] (ss/split row #":")]
+          [:socks5 k (Integer/parseInt (.trim v))]))
+      (doall))))
 
 (defn get-proxies
   []
-  (d/chain
-    (filefab-proxies)
-    (fn [filefab]
-      (let [ff-requesters (map #(apply http/make-requester %) filefab)]
-        (d/zip
-          (d/success-deferred filefab)
-         ; (proxycz-proxies ff-requesters)
-          (spys-proxies ff-requesters {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "0" "xpp" "5"})
-          (spys-proxies ff-requesters {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "1" "xpp" "5"})
-          (spys-proxies ff-requesters {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "2" "xpp" "5"}))))
-    (fn [results]
-      (->> results
-        (apply concat)
-        (into #{})))))
+  (let [pl (into #{} (local-proxy-list))
+        local-rr (map #(apply http/make-requester %) pl)]
+    (d/chain
+      (d/zip
+        (filefab-proxies)
+       ; (proxycz-proxies local-rr)
+        (spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "0" "xpp" "5"})
+        (spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "1" "xpp" "5"})
+        (spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "2" "xpp" "5"}))
+      (fn [results]
+        (->> results
+          (apply concat)
+          (remove #(contains? pl %))
+          (into #{})
+          (map #(apply http/make-requester %))
+          (concat local-rr))))))
 
 (def req http/req)
 
@@ -168,8 +178,8 @@
   [requester-fns]
   (let [proxies @(get-proxies)]
     (for [thunk requester-fns
-          [proxy-type proxy-host proxy-port] proxies]
-      (make-requester thunk proxy-type proxy-host proxy-port))))
+          px proxies]
+      (assoc px :thunk thunk))))
 
 (defn crawl
   [inp opts requester-fns]

@@ -156,7 +156,8 @@
                               rm))]
                 (cond
                   (or (false? (:throw-exceptions opts)) (= (:status rm) 200)) (d/success! res rm)
-                  (= (:status rm) 503) (after-time 1000 error!)
+                  (or (= (:status rm) 503)
+                      (= (:status rm) 429)) (after-time 1000 error!)
                   :else (error!))))
             (onThrowable [^Throwable v]
               (d/error! res v))
