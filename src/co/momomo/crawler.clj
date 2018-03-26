@@ -3,11 +3,14 @@
            [co.momomo.soup :as soup]
            [clojure.java.io :as io]
            [clojure.string :as ss]
+           [clojure.data.xml :as xml]
            [manifold.deferred :as d]
            [co.momomo.http :as http])
   (import [java.util.concurrent LinkedBlockingQueue TimeUnit]
           [java.net Socket InetSocketAddress]
           [java.util ArrayDeque HashMap]
+          [java.io ByteArrayInputStream InputStreamReader]
+          [java.util.zip ZipInputStream]
           [com.google.common.io BaseEncoding]
           [org.jsoup Jsoup]))
 
@@ -71,6 +74,43 @@
       (map (fn [[h p]] [:http h p]) http)
       (map (fn [[h p]] [:socks4 h p]) socks4)
       (map (fn [[h p]] [:socks5 h p]) socks5))))
+
+(defn vipsocks-proxies
+  []
+  (d/chain
+    (http/req "http://www.vipsocks24.net/feeds/posts/default?alt=rss" :get)
+    (fn [rss]
+      (let [url
+        (->>
+          (:body rss)
+          (xml/parse-str)
+          (xml-seq)
+          (filter #(= :link (:tag %)))
+          (map (comp first :content))
+          (filter #(ss/includes? % "vip-socks-5-servers"))
+          (first))]
+      (http/req url :get)))
+    (fn [page]
+      (let [tags
+              (->
+                (:body page)
+                (Jsoup/parse)
+                (soup/select-attr "href"
+                  (soup/%and (soup/tag "a") (soup/kv "target" "_blank"))))]
+        (-> (filter #(ss/includes? % "drive.google.com") tags)
+          (first)
+          (http/req @http/default-requester :get {:as :byte-array}))))
+    (fn [z]
+      (with-open [ins (ZipInputStream. (ByteArrayInputStream. (:body z)))]
+        (loop []
+          (let [entry (.getNextEntry ins)]
+            (cond
+              (nil? entry) nil
+              (not (= "vipsocks.txt" (.getName entry))) (recur)
+              :else (doall
+                     (for [row (line-seq (io/reader ins))]
+                      (let [[k v] (ss/split row #":")]
+                        [:socks5 k (Integer/parseInt (.trim v))]))))))))))
 
 (defn spys-proxies
   [requesters params]
@@ -160,6 +200,7 @@
     (d/chain
       (d/zip
         (filefab-proxies)
+        (vipsocks-proxies)
        ; (proxycz-proxies local-rr)
         (spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "0" "xpp" "5"})
         (spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "1" "xpp" "5"})
@@ -183,23 +224,23 @@
 (defn requesters
   [requester-fns]
   (let [proxies @(get-proxies)]
-    (for [thunk requester-fns
-          px proxies]
+    (for [px proxies thunk requester-fns]
       (assoc px :thunk thunk))))
-
 
 (defn crawl
   [inp opts requester-fns]
-  (let [^ArrayDeque empties (ArrayDeque. ^java.util.Collection (requesters requester-fns))
+  (let [get-empties #(ArrayDeque. ^java.util.Collection (requesters requester-fns))
         ^LinkedBlockingQueue results (LinkedBlockingQueue. 20)]
-    (prn "start")
     (loop [inp inp
-           last-refresh (System/currentTimeMillis)]
+           ^ArrayDeque empties (get-empties)
+           last-update (System/currentTimeMillis)]
       (cond
-        (or (< (.size empties) 200) (< (let [r (Runtime/getRuntime)] (- (.maxMemory r) (- (.totalMemory r) (.freeMemory r)))) (* 1000 1000 1000)))
-          (let [result (.poll results 100 TimeUnit/MILLISECONDS)]
+        (< (.size empties) 1)
+          (let [result (.poll results 60 TimeUnit/SECONDS)]
             (if (nil? result)
-              (recur inp last-refresh)
+              (if (> (- (System/currentTimeMillis) last-update) (* 10 60 1000))
+                (recur inp (get-empties) (System/currentTimeMillis))
+                (recur inp empties last-update))
               (let [rr (:rr result)
                     job (:job result)
                     failed? (or
@@ -209,9 +250,11 @@
                           (not failed?) inp
                           (< (:ttl job) 1) inp
                           :else (cons (assoc job :ttl (dec (:ttl job))) inp))]
-                (when-not (instance? java.net.ConnectException (:error result))
-                  (.addFirst empties rr))
-                (recur nxt last-refresh))))
+                (if (instance? java.net.ConnectException (:error result))
+                  (recur nxt empties last-update)
+                  (do
+                    (.addFirst empties rr)
+                    (recur nxt empties last-update))))))
         :else
           (let [[job & rst] inp
                 rr (.removeLast empties)
@@ -225,4 +268,4 @@
               (fn [error]
                 (.put results
                   (assoc result-map :error error))))
-            (recur rst last-refresh))))))
+            (recur rst empties last-update))))))
