@@ -180,9 +180,7 @@
                         (ss/includes? protocol "HTTP") :http)
                       host port])
                   (catch Exception e
-                    (do
-                      (prn e)
-                      nil)))))))))))
+                      nil))))))))))
 
 (defn local-proxy-list
   []
@@ -202,9 +200,9 @@
         (filefab-proxies)
         (vipsocks-proxies)
        ; (proxycz-proxies local-rr)
-        (spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "0" "xpp" "5"})
-        (spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "1" "xpp" "5"})
-        (spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "2" "xpp" "5"}))
+       (spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "0" "xpp" "5"})
+       (spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "1" "xpp" "5"})
+       (spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "2" "xpp" "5"}))
       (fn [results]
         (->> results
           (apply concat)
@@ -236,7 +234,7 @@
            last-update (System/currentTimeMillis)]
       (cond
         (< (.size empties) 1)
-          (let [result (.poll results 60 TimeUnit/SECONDS)]
+          (let [result (.poll results 10 TimeUnit/SECONDS)]
             (if (nil? result)
               (if (> (- (System/currentTimeMillis) last-update) (* 10 60 1000))
                 (recur inp (get-empties) (System/currentTimeMillis))

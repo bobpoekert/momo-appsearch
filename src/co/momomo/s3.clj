@@ -23,7 +23,9 @@
 (def s3-client
   (delay (AmazonS3Client. ^AWSStaticCredentialsProvider @default-creds)))
 
-
+(defn delete!
+  [^String bucket ^String k]
+  (.deleteObject ^AmazonS3Client @s3-client bucket k))
 
 (defn ^InputStream input-stream
   [^String bucket ^String k]

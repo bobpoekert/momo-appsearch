@@ -12,8 +12,9 @@
              :apkpure-extract {
                                 :main co.momomo.appsearch.scripts.apkpure-extract
                                 :aot :all}
-             :download-apks {
-                            :main co.momomo.appsearch.scripts.download-apks}}
+             :download-apks {:main co.momomo.appsearch.scripts.download-apks}
+             :extract-apk-hashes {:main co.momomo.appsearch.scripts.extract-apk-hashes}
+             :compress-apks {:main co.momomo.appsearch.scripts.compress-apks}}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.jsoup/jsoup "1.11.2"]
                  [com.github.yeriomin/play-store-api "0.32"]

@@ -21,7 +21,7 @@
             ThreeRegisterInstruction TwoRegisterInstruction
             VariableRegisterInstruction VerificationErrorInstruction
             VtableIndexInstruction WideLiteralInstruction]
-          [java.util Arrays]
+          [java.util Arrays HashMap Collections]
           [java.util.jar Manifest]
           [java.nio ByteBuffer]
           [java.io File RandomAccessFile]))
@@ -276,3 +276,21 @@
      :dex (get-dex apk)
      :manifest_xml (.getManifestXml apk)
      :verification (verify apk-data)}))
+
+(defn histogram
+  [vs]
+  (let [^HashMap res (HashMap.)]
+    (doseq [v vs]
+      (if (.containsKey res v)
+        (.put res v (inc (.get res v)))
+        (.put res v 1)))
+    (Collections/unmodifiableMap res)))
+
+(defn method-hashes
+  [apk-data]
+  (->>
+    (for [c (:classes (:dex apk-data))
+          m (concat (:direct_methods c) (:virtual_methods c))]
+      (:code_hash (:impl m)))
+    (remove nil?)
+    (histogram)))

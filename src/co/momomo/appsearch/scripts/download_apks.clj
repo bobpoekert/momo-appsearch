@@ -78,7 +78,6 @@
 (defn inner-download-apps!
   [inp-stream  outp-bucket]
   (let [seen (atom (into #{} (map (fn [^String s] (.trim s)) (line-seq (io/reader (io/file "seen.txt"))))))]
-        ;seen (atom #{})
     (->
       (filter #(and (:artifact_name %) (not (contains? @seen (:artifact_name %))))
         (->
