@@ -281,7 +281,7 @@
   [vs]
   (let [^HashMap res (HashMap.)]
     (doseq [v vs]
-      (if (.containsKey res v)
+      (if (.hasKey res v)
         (.put res v (inc (.get res v)))
         (.put res v 1)))
     (Collections/unmodifiableMap res)))

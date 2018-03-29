@@ -112,6 +112,43 @@
                       (let [[k v] (ss/split row #":")]
                         [:socks5 k (Integer/parseInt (.trim v))]))))))))))
 
+(defn inner-myproxy-proxies
+  [requesters kind url]
+  (d/chain
+    (http/req url :get)
+    (fn [page]
+      (->>
+        (->
+          (:body page)
+          (Jsoup/parse)
+          (soup/select
+            (soup/any-pos
+              (soup/path
+                (soup/has-class "text-center")
+                (soup/has-class "list"))))
+          (first)
+          (soup/get-text))
+        (re-seq #"(\d+)\.(\d+)\.(\d+)\.(\d+):(\d+)")
+        (map (fn [[_ a b c d port]]
+              [kind (format "%s.%s.%s.%s" a b c d) (Integer/parseInt port)]))))))
+
+(defn myproxy-proxies
+  [requesters]
+  (d/chain
+    (d/zip
+      (inner-myproxy-proxies requesters :socks4 "https://www.my-proxy.com/free-socks-4-proxy.html")
+      (inner-myproxy-proxies requesters :socks5 "https://www.my-proxy.com/free-socks-5-proxy.html")
+      (inner-myproxy-proxies requesters :http "https://www.my-proxy.com/free-proxy-list.html")
+      (inner-myproxy-proxies requesters :http "https://www.my-proxy.com/free-proxy-list-2.html")
+      (inner-myproxy-proxies requesters :http "https://www.my-proxy.com/free-proxy-list-3.html")
+      (inner-myproxy-proxies requesters :http "https://www.my-proxy.com/free-proxy-list-4.html")
+      (inner-myproxy-proxies requesters :http "https://www.my-proxy.com/free-proxy-list-5.html")
+      (inner-myproxy-proxies requesters :http "https://www.my-proxy.com/free-proxy-list-6.html")
+      (inner-myproxy-proxies requesters :http "https://www.my-proxy.com/free-proxy-list-7.html")
+      (inner-myproxy-proxies requesters :http "https://www.my-proxy.com/free-proxy-list-8.html")
+      (inner-myproxy-proxies requesters :http "https://www.my-proxy.com/free-proxy-list-9.html"))
+    #(apply concat %1)))
+
 (defn spys-proxies
   [requesters params]
   (d/chain
@@ -200,6 +237,7 @@
         (filefab-proxies)
         (vipsocks-proxies)
        ; (proxycz-proxies local-rr)
+       (myproxy-proxies local-rr)
        (spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "0" "xpp" "5"})
        (spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "1" "xpp" "5"})
        (spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "2" "xpp" "5"}))
