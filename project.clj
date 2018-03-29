@@ -36,4 +36,5 @@
                  [com.amazonaws/aws-java-sdk-s3 "1.11.292"]
                  [org.clojure/data.xml "0.0.8"]
                  [org.asynchttpclient/async-http-client "2.4.4"]
-                 [manifold "0.1.6"]])
+                 [manifold "0.1.6"]
+                 [net.sf.trove4j/trove4j "3.0.2"]])
