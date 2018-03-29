@@ -96,14 +96,15 @@
 
 (defn get-manifest
   [^AbstractApkFile apk]
-  (->>
-    (->
-      (.getFileData apk "META-INF/MANIFEST.MF")
-      (io/input-stream)
-      (Manifest.)
-      (.getEntries))
-    (map (fn [v] [(key v) (parse-manifest-entry (val v))]))
-    (into {})))
+  (when-let [data (.getFileData apk "META-INF/MANIFEST.MF")]
+    (->>
+      (->
+        data 
+        (io/input-stream)
+        (Manifest.)
+        (.getEntries))
+      (map (fn [v] [(key v) (parse-manifest-entry (val v))]))
+      (into {}))))
 
 (defn mask-flags
   [v & pairs]
