@@ -7,9 +7,9 @@
            [co.momomo.appsearch.apkd :as apkd]
            [clojure.string :as ss]
            [clojure.java.io :as io]
-           [manifold.deferred :as d])
-  (import [org.tukaani.xz XZInputStream]
-          [java.io File OutputStream]))
+           [manifold.deferred :as d]
+           [co.momomo.compress :refer [xz-input-stream]])
+  (import [java.io File OutputStream]))
 
 (def temp-dir "/mnt")
 
@@ -62,13 +62,13 @@
 (defn requester-fns
   [bucket seen]
   (->>
-    [;apkd/lieng-download-url
-     ;apkd/aapk-download-url 
+    [apkd/lieng-download-url
+     apkd/aapk-download-url 
      apkd/apkd-download-url 
-     ;apkd/apkname-download-url 
+     apkd/apkwin-download-url 
+     apkd/apkname-download-url 
      apkd/apkfollow-download-url 
      apkd/apkbird-download-url 
-     apkd/apkdl-download-url 
      apkd/apkdroid-download-url 
      apkd/apkp-download-url
      apkd/apkbiz-download-url]
@@ -82,7 +82,7 @@
       (filter #(and (:artifact_name %) (not (contains? @seen (:artifact_name %))))
         (->
           inp-stream
-          (XZInputStream.)
+          (xz-input-stream)
           (cereal/data-seq)))
       (cr/crawl {} (requester-fns outp-bucket seen)))))
 

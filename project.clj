@@ -24,6 +24,7 @@
                  [org.xerial/sqlite-jdbc "3.7.2"]
                  [org.clojure/java.data "0.1.1"]
                  [com.joestelmach/natty "0.11"]
+                 [org.apache.commons/commons-compress "1.16.1"]
                  [org.tukaani/xz "1.8"]
                  [org.clojars.kostafey/clucy "0.5.5.0"]
                  [compojure "1.6.0"]

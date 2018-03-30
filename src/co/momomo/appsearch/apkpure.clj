@@ -12,7 +12,6 @@
           [org.jsoup.nodes Element]
           [java.util.concurrent LinkedBlockingQueue TimeUnit]
           [java.io InputStream OutputStream ByteArrayOutputStream]
-          [org.tukaani.xz XZOutputStream LZMA2Options XZInputStream]
           [co.momomo PipelineOutputStream]
           [com.joestelmach.natty Parser DateGroup]))
 

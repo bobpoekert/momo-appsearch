@@ -1,10 +1,10 @@
 (ns co.momomo.cereal
   (require [clojure.data.fressian :as fress]
            [clojure.java.io :as io]
-           [clj-http.client :as http])
+           [clj-http.client :as http]
+           [co.momomo.compress :refer [xz-input-stream xz-output-stream]])
   (import [java.util.concurrent
-            LinkedBlockingQueue BlockingQueue CountDownLatch TimeUnit]
-          [org.tukaani.xz XZInputStream XZOutputStream LZMA2Options]))
+            LinkedBlockingQueue BlockingQueue CountDownLatch TimeUnit]))
 
 (defn queue-seq
   [^LinkedBlockingQueue inp]
@@ -81,7 +81,7 @@
 
 (defn data-into-file!
   [inp outf]
-  (with-open [outs (XZOutputStream. (io/output-stream outf) (LZMA2Options.))]
+  (with-open [outs (xz-output-stream (io/output-stream outf))]
     (let [douts (fress/create-writer outs)]
       (doseq [row inp]
         (fress/write-object douts row)))))
@@ -110,7 +110,7 @@
   [fd]
   (->
     (io/input-stream fd)
-    (XZInputStream.)
+    (xz-input-stream)
     (fress/create-reader)
     (inner-data-seq)))
 

@@ -1,6 +1,7 @@
 (ns co.momomo.appsearch.scripts.compress-apks
   (:gen-class)
   (require [co.momomo.s3 :as s3]
+           [clj-http.client :as http]
            [clojure.string :as ss]
            [clojure.java.io :as io]
            [clojure.java.shell :refer [sh]])
@@ -48,43 +49,26 @@
       (.putString hasher "/" utf8))
     (str (.hash hasher))))
 
-(defn inner-key-partitions
-  [summaries]
-  (when (seq summaries)
-    (loop [slice (list)
-           size 0
-           rst summaries]
-      (cond
-        (not (seq rst)) slice
-        (< (+ size (.getSize (first rst))) (* 4.5 1000 1000 1000))
-          (let [h (first rst)]
-            (recur (cons h slice) (+ size (.getSize h)) (rest rst)))
-        :else (cons slice (lazy-seq (inner-key-partitions rst)))))))
-
-(defn key-partitions
-  [bucket]
-  (let [summaries (s3/list-bucket-summaries bucket)
-        summaries (remove #(ss/includes? (.getKey %) ".tpxz") summaries)
-        summaries (sort-by #(.getKey %) summaries)]
-    (inner-key-partitions (seq summaries))))
-
 (defn compress-bucket!
-  [bucket scratchdir tardir logfile]
+  [coordinator bucket scratchdir tardir logfile]
   (with-open [logs (io/writer (io/file logfile) :append true)]
-    (doseq [slice (key-partitions bucket)]
-      (let [slice (map #(.getKey %) slice)
-            fname (str (hash-strings slice) ".tpxz")]
-        (prn fname)
-        (download-files! bucket slice scratchdir)
-        (compress-dir! scratchdir (str tardir "/" fname))
-        (s3/upload-file! bucket fname (io/file tardir fname))
-        (prn fname)
-        (.delete (io/file tardir fname))
-        (doseq [k slice]
-          (.delete (io/file scratchdir k))
-          (.write logs (format "%s %s\n" fname k))
-          (s3/delete! bucket k))
-        (.flush logs)))))
+    (loop []
+      (let [job (:body (http/get (str "http://" coordinator "/get_job") {:as :json}))]
+        (when-not (:done job)
+          (let [slice (:artifacts job)
+                fname (str (hash-strings slice) ".tpxz")]
+            (prn fname)
+            (download-files! bucket slice scratchdir)
+            (compress-dir! scratchdir (str tardir "/" fname))
+            (s3/upload-file! bucket fname (io/file tardir fname))
+            (prn fname)
+            (.delete (io/file tardir fname))
+            (doseq [k slice]
+              (.delete (io/file scratchdir k))
+              (.write logs (format "%s %s\n" fname k))
+              (s3/delete! bucket k))
+            (.flush logs)
+            (recur)))))))
 
 (defn -main
   [& args]

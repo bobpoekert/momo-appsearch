@@ -108,9 +108,12 @@
               (nil? entry) nil
               (not (= "vipsocks.txt" (.getName entry))) (recur)
               :else (doall
-                     (for [row (line-seq (io/reader ins))]
-                      (let [[k v] (ss/split row #":")]
-                        [:socks5 k (Integer/parseInt (.trim v))]))))))))))
+                     (filter identity
+                       (for [row (line-seq (io/reader ins))]
+                        (try
+                          (let [[k v] (ss/split row #":")]
+                            [:socks5 k (Integer/parseInt (.trim v))])
+                          (catch Exception e nil))))))))))))
 
 (defn inner-myproxy-proxies
   [requesters kind url]
@@ -146,7 +149,8 @@
       (inner-myproxy-proxies requesters :http "https://www.my-proxy.com/free-proxy-list-6.html")
       (inner-myproxy-proxies requesters :http "https://www.my-proxy.com/free-proxy-list-7.html")
       (inner-myproxy-proxies requesters :http "https://www.my-proxy.com/free-proxy-list-8.html")
-      (inner-myproxy-proxies requesters :http "https://www.my-proxy.com/free-proxy-list-9.html"))
+      (inner-myproxy-proxies requesters :http "https://www.my-proxy.com/free-proxy-list-9.html")
+      (inner-myproxy-proxies requesters :http "https://www.my-proxy.com/free-proxy-list-10.html"))
     #(apply concat %1)))
 
 (defn spys-proxies
@@ -286,7 +290,9 @@
                           (not failed?) inp
                           (< (:ttl job) 1) inp
                           :else (cons (assoc job :ttl (dec (:ttl job))) inp))]
-                (if (instance? java.net.ConnectException (:error result))
+                (if (or
+                      (instance? java.net.ConnectException (:error result))
+                      (= 429 (:status (ex-data (:error result)))))
                   (recur nxt empties last-update)
                   (do
                     (.addFirst empties rr)
