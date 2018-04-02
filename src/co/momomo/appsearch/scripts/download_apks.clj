@@ -38,11 +38,15 @@
         (d/chain
           (f requester info)
           (fn [url]
-            (if (not (string? url))
+            (if (or
+                  (not (string? url))
+                  (ss/includes? url "play.google.com"))
               :error
               (do
                 (prn url)
-                (download-to-file! url requester outf))))
+                (d/catch
+                  (download-to-file! url @http/default-requester outf)
+                  #(download-to-file! url requester outf)))))
           (fn [apk-res]
             (if (or (not (= (:status apk-res) 200))
                     (ss/includes? (get (:headers apk-res) "content-type") "text/html"))

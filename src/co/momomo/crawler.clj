@@ -241,10 +241,10 @@
         (filefab-proxies)
         (vipsocks-proxies)
        ; (proxycz-proxies local-rr)
-       (myproxy-proxies local-rr)
-       (spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "0" "xpp" "5"})
-       (spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "1" "xpp" "5"})
-       (spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "2" "xpp" "5"}))
+       (myproxy-proxies local-rr))
+       ;(spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "0" "xpp" "5"})
+       ;(spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "1" "xpp" "5"})
+       ;(spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "2" "xpp" "5"}))
       (fn [results]
         (->> results
           (apply concat)
@@ -269,18 +269,16 @@
 
 (defn crawl
   [inp opts requester-fns]
-  (let [get-empties #(ArrayDeque. ^java.util.Collection (requesters requester-fns))
-        ^LinkedBlockingQueue results (LinkedBlockingQueue. 20)]
+  (let [empties (ArrayDeque. ^java.util.Collection (requesters requester-fns))
+        ^LinkedBlockingQueue results (LinkedBlockingQueue. 20)
+        empties-count (.size empties)]
     (loop [inp inp
-           ^ArrayDeque empties (get-empties)
+           ^ArrayDeque empties empties
            last-update (System/currentTimeMillis)]
       (cond
-        (< (.size empties) 1)
-          (let [result (.poll results 10 TimeUnit/SECONDS)]
-            (if (nil? result)
-              (if (> (- (System/currentTimeMillis) last-update) (* 10 60 1000))
-                (recur inp (get-empties) (System/currentTimeMillis))
-                (recur inp empties last-update))
+        (< (.size empties) (max 1 (- empties-count 20000)))
+          (let [result (.poll results 11 TimeUnit/SECONDS)]
+            (if-not (nil? result)
               (let [rr (:rr result)
                     job (:job result)
                     failed? (or
@@ -290,13 +288,8 @@
                           (not failed?) inp
                           (< (:ttl job) 1) inp
                           :else (cons (assoc job :ttl (dec (:ttl job))) inp))]
-                (if (or
-                      (instance? java.net.ConnectException (:error result))
-                      (= 429 (:status (ex-data (:error result)))))
-                  (recur nxt empties last-update)
-                  (do
-                    (.addFirst empties rr)
-                    (recur nxt empties last-update))))))
+                (.addFirst empties rr)
+                (recur nxt empties last-update))))
         :else
           (let [[job & rst] inp
                 rr (.removeLast empties)

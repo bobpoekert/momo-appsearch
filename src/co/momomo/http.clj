@@ -85,7 +85,7 @@
                 (.build)))
             (.build))))))
   ([proxy-type proxy-host proxy-port]
-    (build-client proxy-type proxy-host proxy-port 500)))
+    (build-client proxy-type proxy-host proxy-port 100)))
 
 (defn pick-random
   [v]
@@ -156,8 +156,6 @@
                               rm))]
                 (cond
                   (or (false? (:throw-exceptions opts)) (= (:status rm) 200)) (d/success! res rm)
-                  (or (= (:status rm) 503)
-                      (= (:status rm) 429)) (after-time 1000 error!)
                   :else (error!))))
             (onThrowable [^Throwable v]
               (d/error! res v))
