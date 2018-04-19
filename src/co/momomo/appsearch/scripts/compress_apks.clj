@@ -7,7 +7,9 @@
            [clojure.java.shell :refer [sh]])
   (import [java.nio.file Files]
           [java.util.concurrent Executors CountDownLatch ExecutorService]
-          [com.amazonaws.services.s3.transfer TransferManagerBuilder TransferManager Download]
+          [java.util.concurrent.atomic AtomicInteger]
+          [com.amazonaws.services.s3.transfer
+            TransferManagerBuilder TransferManager Download]
           [com.google.common.hash Hashing Hasher]))
 
 (set! *warn-on-reflection* true)
@@ -49,26 +51,89 @@
       (.putString hasher "/" utf8))
     (str (.hash hasher))))
 
+(def dir-id (AtomicInteger.))
+
+(defn create-scratch-dir!
+  [scratch-root]
+  (let [id (.incrementAndGet dir-id)
+        ^java.io.File fd (io/file scratch-root (str id))]
+    (.mkdir fd)
+    fd))
+
+(defn job-seq
+  [scratch-root coordinator]
+  (cons
+    (let [job (->
+                (str "http://" coordinator "/get_job")
+                (http/get {:as :json :conn-timeout 1000})
+                (:body)
+                (:artifacts))]
+      {:dir (create-scratch-dir! scratch-root)
+       :tarname (str (hash-strings job) ".tpxz")
+       :job job})
+    (lazy-seq (job-seq scratch-root coordinator))))
+
+(defn download-mapper
+  [bucket]
+  (fn [job]
+    (prn (:tarname job))
+    (download-files! bucket (:job job) (:dir job))
+    job))
+
+(defn delete-input!
+  [job]
+  (doseq [k (:job job)]
+    (io/delete-file (io/file (:dir job) k)))
+  (io/delete-file (:dir job)))
+
+(defn compress-mapper
+  [tardir]
+  (fn [job]
+    (compress-dir! (str (:dir job)) (str tardir "/" (:tarname job)))
+    (delete-input! job)
+    job))
+
+(defn upload-mapper
+  [bucket tardir]
+  (fn [job]
+    (s3/upload-file! bucket (:tarname job) (io/file tardir (:tarname job)))
+    job))
+
+(defn delete-mapper
+  [bucket tardir logs]
+  (fn [job]
+    (let [fname (:tarname job)]
+      (.delete (io/file tardir fname))
+      (doseq [k (:job job)]
+        (.write logs (format "%s %s\n" fname k))
+        (s3/delete! bucket k))
+      (.flush logs))))
+
+    
+   
+(defn consume
+  [s]
+  (doseq [_ s] nil))
+
+
+(defn unchunk [s]
+  (when (seq s)
+    (lazy-seq
+      (cons (first s)
+            (unchunk (next s))))))
+
 (defn compress-bucket!
   [coordinator bucket scratchdir tardir logfile]
   (with-open [logs (io/writer (io/file logfile) :append true)]
-    (loop []
-      (let [job (:body (http/get (str "http://" coordinator "/get_job") {:as :json}))]
-        (when-not (:done job)
-          (let [slice (:artifacts job)
-                fname (str (hash-strings slice) ".tpxz")]
-            (prn fname)
-            (download-files! bucket slice scratchdir)
-            (compress-dir! scratchdir (str tardir "/" fname))
-            (s3/upload-file! bucket fname (io/file tardir fname))
-            (prn fname)
-            (.delete (io/file tardir fname))
-            (doseq [k slice]
-              (.delete (io/file scratchdir k))
-              (.write logs (format "%s %s\n" fname k))
-              (s3/delete! bucket k))
-            (.flush logs)
-            (recur)))))))
+    (->>
+      (job-seq scratchdir coordinator)
+      (map (download-mapper bucket))
+      (seque 1)
+      (map (compress-mapper tardir))
+      (seque 1)
+      (map (upload-mapper bucket tardir))
+      (map (delete-mapper bucket tardir logs))
+      (consume))))
 
 (defn -main
   [& args]

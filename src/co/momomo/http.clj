@@ -85,7 +85,7 @@
                 (.build)))
             (.build))))))
   ([proxy-type proxy-host proxy-port]
-    (build-client proxy-type proxy-host proxy-port 100)))
+    (build-client proxy-type proxy-host proxy-port 500)))
 
 (defn pick-random
   [v]

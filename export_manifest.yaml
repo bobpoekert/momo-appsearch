@@ -1,0 +1,20 @@
+manifestVersion: 2.0
+deviceId: AC364101-D44C-4130-8F78-4ED95245622E
+fileSystem: EXT4
+trueCryptPassword: "Un_sxtXEPBkivjPRRyNP5GNSS-KR85FyC2ofVXzEaI_bljHCPL"
+logBucket: momo-export-logs
+notificationEmail: bob@poekert.com
+returnAddress:
+    name: Robert Poekert
+    street1: 1914 Channing Way
+    street2: Apt 4
+    city: Berkeley
+    stateOrProvince: CA
+    postalCode: 94704
+    phoneNumber: 215-450-1337
+    country: USA
+operations:
+    - exportBucket: momo-apkfiles
+      beginMarker: 0031ddded33a6f0409e1a7eb623288da782d96b98d6233acb6ff35cace71f8b2.tpxz
+      endMarker: com.thunkable.android.simonepirozzi97.TrashTube1
+

@@ -12,9 +12,18 @@
           [java.io ByteArrayInputStream InputStreamReader]
           [java.util.zip ZipInputStream]
           [com.google.common.io BaseEncoding]
+          [javax.script ScriptEngine ScriptEngineManager]
+          [jdk.nashorn.api.scripting JSObject]
           [org.jsoup Jsoup]))
 
 (set! *warn-on-reflection* true)
+
+(def js-engine
+  (delay
+    (->
+      (ScriptEngineManager.)
+      (.getEngineByName "nashorn")
+      (.eval "function(code, cb) { docuemnt = {}; document.write = cb; eval(code); }"))))
 
 (defn proxy-hosts
   [list-url]
@@ -74,6 +83,7 @@
       (map (fn [[h p]] [:http h p]) http)
       (map (fn [[h p]] [:socks4 h p]) socks4)
       (map (fn [[h p]] [:socks5 h p]) socks5))))
+
 
 (defn vipsocks-proxies
   []
@@ -223,14 +233,28 @@
                   (catch Exception e
                       nil))))))))))
 
+(defn parse-proxy-host-port
+  [kind v]
+  (let [[h p] (ss/split (ss/trim v) #":")]
+    [kind h (Integer/parseInt p)]))
+
+(defn parse-proxy-resource
+  [kind rname]
+  (with-open [ins (io/reader (io/resource rname))]
+    (->>
+      (line-seq ins)
+      (map (partial parse-proxy-host-port kind))
+      (doall))))
+
+
 (defn local-proxy-list
   []
-  (with-open [ins (io/reader (io/resource "vipsocks.txt"))]
-    (->
-      (for [row (line-seq ins)]
-        (let [[k v] (ss/split row #":")]
-          [:socks5 k (Integer/parseInt (.trim v))]))
-      (doall))))
+  (concat
+    ;(parse-proxy-resource :socks5 "vipsocks.txt")
+    (parse-proxy-resource :http "http_proxies_by_proxydb_net.txt")
+    (parse-proxy-resource :http "https_proxies_by_proxydb_net.txt")
+    (parse-proxy-resource :socks4 "socks4_proxies_by_proxydb_net.txt")
+    (parse-proxy-resource :socks5 "socks5_proxies_by_proxydb_net.txt")))
 
 (defn get-proxies
   []
@@ -238,8 +262,8 @@
         local-rr (map #(apply http/make-requester %) pl)]
     (d/chain
       (d/zip
-        (filefab-proxies)
-        (vipsocks-proxies)
+       (filefab-proxies)
+       (vipsocks-proxies)
        ; (proxycz-proxies local-rr)
        (myproxy-proxies local-rr))
        ;(spys-proxies local-rr {"xf1" "0" "xf2" "0" "xf4" "0" "xf5" "0" "xpp" "5"})
@@ -269,27 +293,26 @@
 
 (defn crawl
   [inp opts requester-fns]
-  (let [empties (ArrayDeque. ^java.util.Collection (requesters requester-fns))
+  (let [empties (ArrayDeque. ^java.util.Collection (shuffle (requesters requester-fns)))
         ^LinkedBlockingQueue results (LinkedBlockingQueue. 20)
         empties-count (.size empties)]
     (loop [inp inp
            ^ArrayDeque empties empties
            last-update (System/currentTimeMillis)]
       (cond
-        (< (.size empties) (max 1 (- empties-count 20000)))
-          (let [result (.poll results 11 TimeUnit/SECONDS)]
-            (if-not (nil? result)
-              (let [rr (:rr result)
-                    job (:job result)
-                    failed? (or
-                              (:error result)
-                              (not (= (:result result) :success)))
-                    nxt (cond
-                          (not failed?) inp
-                          (< (:ttl job) 1) inp
-                          :else (cons (assoc job :ttl (dec (:ttl job))) inp))]
+        (< (.size empties) (max 1 (- empties-count 10000)))
+          (let [result (.take results)
+                rr (:rr result)
+                job (:job result)
+                failed? (or
+                          (:error result)
+                          (not (= (:result result) :success)))
+                nxt (cond
+                      (not failed?) inp
+                      (< (:ttl job) 1) inp
+                      :else (cons (assoc job :ttl (dec (:ttl job))) inp))]
                 (.addFirst empties rr)
-                (recur nxt empties last-update))))
+                (recur nxt empties last-update))
         :else
           (let [[job & rst] inp
                 rr (.removeLast empties)

@@ -22,6 +22,7 @@
   (let [^OutputStream outs (io/output-stream outf)
         cb (fn [^bytes b] (.write outs b))
         res (cr/req url rr :get {:body-callback cb})]
+    (prn url)
     (d/on-realized res
       (fn [v] nil)
       (fn [^Throwable e] (prn (.getMessage e))))
@@ -42,11 +43,7 @@
                   (not (string? url))
                   (ss/includes? url "play.google.com"))
               :error
-              (do
-                (prn url)
-                (d/catch
-                  (download-to-file! url @http/default-requester outf)
-                  #(download-to-file! url requester outf)))))
+              (download-to-file! url requester outf)))
           (fn [apk-res]
             (if (or (not (= (:status apk-res) 200))
                     (ss/includes? (get (:headers apk-res) "content-type") "text/html"))
@@ -66,7 +63,8 @@
 (defn requester-fns
   [bucket seen]
   (->>
-    [apkd/lieng-download-url
+    [
+     apkd/lieng-download-url
      apkd/aapk-download-url 
      apkd/apkd-download-url 
      apkd/apkwin-download-url 
@@ -75,7 +73,8 @@
      apkd/apkbird-download-url 
      apkd/apkdroid-download-url 
      apkd/apkp-download-url
-     apkd/apkbiz-download-url]
+     apkd/apkbiz-download-url
+    ]
     (map (partial downloader bucket seen))
     (vec)))
 
