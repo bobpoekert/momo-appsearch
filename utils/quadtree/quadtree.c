@@ -3,14 +3,9 @@
 #include <stdlib.h>
 #include <omp.h>
 #include <alloca.h>
+#include <string.h>
+#include <stdio.h>
 #include "quadtree.h"
-
-#define NW 0
-#define NE 1
-#define SW 2
-#define SE 3
-
-#define LOG4(t) (log10(t) / 0.602059991327962)
 
 quadtree__z_value quadtree__get_z_value(uint32_t x, uint32_t y) {
     x = (x | (x << 16)) & 0x0000FFFF0000FFFF;
@@ -28,22 +23,11 @@ quadtree__z_value quadtree__get_z_value(uint32_t x, uint32_t y) {
     return x | (y << 1);
 }
 
-/* size in bits of the hash value for a tree with given number of points */
-size_t quadtree__hash_size(uint64_t n_points) {
-    return LOG4(n_points) * 2 / 4;
-}
-
-size_t quadtree__depth(uint64_t n_points) {
-    return n_points * LOG4(n_points);
-}
-
 
 quadtree__tree *quadtree__init(size_t n_points, uint32_t *points) {
     quadtree__tree *res = malloc(sizeof(quadtree__tree));
     res->n_points = n_points;
-    res->hash_size = quadtree__hash_size(n_points);
-    res->tree_depth = quadtree__depth(n_points);
-    size_t row_size = res->hash_size;
+    size_t row_size = sizeof(quadtree__z_value);
     res->rows = malloc(n_points * row_size);
     uint64_t max_x = 0;
     uint64_t max_y = 0;
@@ -80,7 +64,7 @@ void quadtree__free(quadtree__tree *v) {
 void quicksort(uint32_t *a, uint64_t *v, size_t len) {
     if (len < 2) return;
     
-    int pivot = v[a[len / 2]];
+    uint64_t pivot = v[a[len / 2]];
     
     int i, j;
     for (i = 0, j = len - 1; ; i++, j--) {
@@ -89,7 +73,7 @@ void quicksort(uint32_t *a, uint64_t *v, size_t len) {
     
         if (i >= j) break;
     
-        int temp = a[i];
+        uint32_t temp = a[i];
         a[i]     = a[j];
         a[j]     = temp;
     }
@@ -98,19 +82,60 @@ void quicksort(uint32_t *a, uint64_t *v, size_t len) {
     quicksort(a + i, v, len - i);
 }
 
+void radix_sort(uint32_t *a, uint64_t *v, size_t len) {
+    if (len < 2) return;
+
+    uint64_t max = 0;
+    for (size_t i=0; i < len; i++) {
+        uint64_t vv = v[i];
+        if (vv > max) max = vv;
+    }
+
+    int buckets[10];
+    uint32_t *scratch = malloc(len * sizeof(uint32_t));
+
+    for (size_t x=1; max / x > 0; x *= 10) {
+        memset(buckets, 0, sizeof(int) * 10);
+        for (size_t k=0; k < len; k++) {
+            uint64_t vv = v[a[k]];
+            buckets[(vv / x) % 10]++;
+        }
+
+        for (size_t l=1; l < 10; l++) {
+            /* turn counts into offsets */
+            buckets[l] += buckets[l-1];
+        }
+
+        for (size_t j=len-1; j > 0; j--) {
+            uint64_t vv = v[a[j]];
+            size_t bucket_idx = (vv / x) % 10;
+            scratch[buckets[bucket_idx] - 1] = a[j];
+            buckets[bucket_idx]--;
+        }
+
+        memcpy(a, scratch, len * sizeof(uint32_t));
+    }
+
+    free(scratch);
+}
+
+
 void merge_partitions(uint32_t **partitions, uint64_t *v, uint32_t *res,
                       size_t n_partitions, size_t n_rows) {
     size_t res_idx = 0;
-    size_t *partition_idxes = alloca(n_partitions * sizeof(size_t));
+    size_t partition_idxes_size = n_partitions * sizeof(size_t);
+    size_t *partition_idxes = alloca(partition_idxes_size);
+    memset(partition_idxes, 0, partition_idxes_size);
     size_t partition_size = n_rows / n_partitions;
     while (res_idx < n_rows) {
-        uint64_t min_val = -1;
-        uint32_t min_val_idx;
+        uint32_t pidx = partitions[0][partition_idxes[0]];
+        uint64_t min_val = v[pidx];
+        uint32_t min_val_idx = pidx;
         size_t min_partition;
-        for (size_t partition=0; partition < n_partitions; partition++) {
-            uint32_t pidx = partition_idxes[partition];
-            if (pidx >= partition_size) continue;
-            uint64_t cv = v[partitions[partition][pidx]];
+        for (size_t partition=1; partition < n_partitions; partition++) {
+            if (partition_idxes[partition] > partition_size) continue;
+            pidx = partitions[partition][partition_idxes[partition]];
+            uint64_t cv = v[pidx];
             if (cv < min_val) {
                 min_val = cv;
                 min_val_idx = pidx;
@@ -148,7 +173,7 @@ void quadtree__sort(
             for (size_t ctr=0; ctr < partition_size; ctr++) {
                 partition[ctr] = ctr + partition_start;
             }
-            quicksort(partition, self->rows, partition_size);
+            radix_sort(partition, self->rows, partition_size);
             partitions[thread_id] = partition;
         }
 
@@ -163,3 +188,12 @@ void quadtree__sort(
 
     }
 }
+
+/* data format
+
+<bit indicating if leaf or not>
+    if leaf:
+        <63 bits of hash><32 bits of row id>
+    else:
+        <8 bits of hash length><length bits of hash><32 bits of count of number of points under this node>
+*/
