@@ -7,6 +7,24 @@
 #include <stdio.h>
 #include "quadtree.h"
 
+/*
+
+    1. generate full-resolution hashes
+    2. find longest number of bits for which 
+       the longest common prefix with that many bits is shorter than the block size
+    3. generate list of prefix counts with prefixes of that length
+    4. repeat 2 and 3 with output of 3 until the result has only one block
+
+    metadata:
+        - min x
+        - max x
+        - min y
+        - max y
+        - hash levels
+
+*/
+
+
 quadtree__z_value quadtree__get_z_value(uint32_t x, uint32_t y) {
     x = (x | (x << 16)) & 0x0000FFFF0000FFFF;
     x = (x | (x << 8)) & 0x00FF00FF00FF00FF;
@@ -188,12 +206,3 @@ void quadtree__sort(
 
     }
 }
-
-/* data format
-
-<bit indicating if leaf or not>
-    if leaf:
-        <63 bits of hash><32 bits of row id>
-    else:
-        <8 bits of hash length><length bits of hash><32 bits of count of number of points under this node>
-*/

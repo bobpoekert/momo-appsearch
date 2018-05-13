@@ -2,19 +2,13 @@
   (:gen-class)
   (require [co.momomo.appsearch.apk :as apk]
            [co.momomo.cereal :as cereal]
+           [co.momomo.compress :refer [file-datas]]
            [clojure.java.io :as io])
   (import [com.google.common.io LittleEndianDataOutputStream LittleEndianDataInputStream]
           [gnu.trove.set.hash TIntHashSet]
           [gnu.trove.list.array TIntArrayList]))
 
 (set! *warn-on-reflection* true)
-
-(defn slurp-bytes
-  "Slurp the bytes from a slurpable thing"
-  [x]
-  (with-open [out (java.io.ByteArrayOutputStream.)]
-    (io/copy (io/input-stream x) out)
-    (.toByteArray out)))
 
 (defn write-coo-bag-vectors!
   [outfname apk-fnames]
@@ -26,7 +20,7 @@
       (loop [idx 0
              hists
                 (cereal/parmap apk-fnames
-                  (map (comp apk/method-hashes apk/load-apk slurp-bytes)))]
+                  (map (comp apk/method-hashes apk/load-apk (map :data) (mapcat file-datas))))]
         (when (seq hists)
           (let [h (first hists) t (rest hists)]
             (doseq [pair h]

@@ -235,7 +235,12 @@
   [^AbstractApkFile apk]
   (let [^bytes data (.getFileData apk AndroidConstants/DEX_FILE)
         ^DexBackedDexFile dex (DexBackedDexFile. (Opcodes/getDefault) data)]
-    {:classes (map dex-class (.getClasses dex))}))
+    dex))
+
+(defn extract-text
+  [^DexBackedDexFile dex]
+  (for [r (.getStrings dex)]
+    (.getString r)))
 
 (defn parse-cert
   [^java.security.cert.X509Certificate c]
@@ -270,11 +275,14 @@
     (.verify)
     (parse-verification)))
 
+
 (defn load-apk
   [^bytes apk-data]
-  (let [apk (ByteArrayApkFile. apk-data)]
+  (let [apk (ByteArrayApkFile. apk-data)
+        dex (get-dex apk)]
     {:manifest (get-manifest apk)
-     :dex (get-dex apk)
+     :dex dex
+     :classes (map dex-class (.getClasses dex))
      :manifest_xml (.getManifestXml apk)
      :verification (verify apk-data)}))
 
@@ -290,7 +298,7 @@
 (defn method-hashes
   [apk-data]
   (->>
-    (for [c (:classes (:dex apk-data))
+    (for [c (:classes apk-data)
           m (concat (:direct_methods c) (:virtual_methods c))]
       (:code_hash (:impl m)))
     (remove nil?)

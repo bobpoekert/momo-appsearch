@@ -40,3 +40,17 @@
     (xz-input-stream)
     (TarArchiveInputStream.)
     (inner-tpxz-files)))
+
+(defn slurp-bytes
+  "Slurp the bytes from a slurpable thing"
+  [x]
+  (with-open [out (java.io.ByteArrayOutputStream.)]
+    (io/copy (io/input-stream x) out)
+    (.toByteArray out)))
+
+(defn file-datas
+  [^String infname]
+  (if-not (.endsWith infname ".tpxz")
+    [{:name infname :data (slrup-bytes (io/file infname))}]
+    (with-open [ins (io/input-stream (io/file infanme))]
+      (tpxz-files infname))))

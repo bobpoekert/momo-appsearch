@@ -26,11 +26,7 @@ int main(int argc, char **argv) {
     size_t n_rows = inp_stat.st_size / (sizeof(uint32_t) * 2);
     quadtree__tree *tree = quadtree__init(n_rows, inp_data);
     uint32_t *sorted_indexes = malloc(n_rows * sizeof(uint32_t));
-    quadtree__sort(tree, sorted_indexes);
-
-    munmap(inp_data, inp_stat.st_size);
-    close(inp_fd);
-
+    
     size_t outp_size = sizeof(uint64_t) * 4 + sizeof(uint64_t) * n_rows;
     truncate(outp_fname, outp_size);
     int outp_fd = open(outp_fname, O_RDWR | O_CREAT);
@@ -38,6 +34,12 @@ int main(int argc, char **argv) {
         printf("failed to open output file\n");
         return 1;
     }
+
+    quadtree__sort(tree, sorted_indexes);
+
+    munmap(inp_data, inp_stat.st_size);
+    close(inp_fd);
+
     uint64_t header[4];
 
     header[0] = tree->max_x;
