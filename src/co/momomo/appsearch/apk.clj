@@ -21,10 +21,13 @@
             ThreeRegisterInstruction TwoRegisterInstruction
             VariableRegisterInstruction VerificationErrorInstruction
             VtableIndexInstruction WideLiteralInstruction]
-          [java.util Arrays HashMap Collections]
+          [brut.androlib.res.decoder ARSCDecoder]
+          [brut.androlib.res.data ResType ResPackage ResValuesFile ResTypeSpec ResResource]
+          [brut.androlib.res.xml ResXmlEncodable]
+          [java.util Arrays HashMap Collections ArrayList]
           [java.util.jar Manifest]
           [java.nio ByteBuffer]
-          [java.io File RandomAccessFile]))
+          [java.io File RandomAccessFile ByteArrayInputStream]))
 
 (set! *warn-on-reflection* true)
    
@@ -237,10 +240,6 @@
         ^DexBackedDexFile dex (DexBackedDexFile. (Opcodes/getDefault) data)]
     dex))
 
-(defn extract-text
-  [^DexBackedDexFile dex]
-  (for [r (.getStrings dex)]
-    (.getString r)))
 
 (defn parse-cert
   [^java.security.cert.X509Certificate c]
@@ -276,6 +275,7 @@
     (parse-verification)))
 
 
+(quote
 (defn load-apk
   [^bytes apk-data]
   (let [apk (ByteArrayApkFile. apk-data)
@@ -284,13 +284,44 @@
      :dex dex
      :classes (map dex-class (.getClasses dex))
      :manifest_xml (.getManifestXml apk)
-     :verification (verify apk-data)}))
+     :verification (delay (verify apk-data))})))
+
+(defn get-resources
+  [^AbstractApkFile apk]
+  (->
+    (ARSCDecoder/decode
+      (ByteArrayInputStream.
+        (.getFileData apk "resources.arsc"))
+      true true)
+     (.getPackages)))
+
+(defmacro doarr
+  [[bind arr] & bodies]
+  `(dotimes [i# (alength ~arr)]
+    (let [~bind (aget ~arr i#)]
+      ~@bodies)))
+
+(defn get-strings
+  [^AbstractApkFile apk]
+  (let [^objects resources (get-resources apk)
+        res (ArrayList.)]
+    (doarr [^ResPackage p resources]
+      (doseq [^ResValuesFile fd (.listValuesFiles p)]
+        (let [^ResTypeSpec typ (.getType fd)
+              locale (.getQualifiers (.getFlags (.getConfig fd)))]
+          (when (.isString typ)
+            (doseq [^ResResource rs (.listResources fd)]
+              (let [k (.getName (.getResSpec rs))
+                    v (.encodeAsResXmlValue ^ResXmlEncodable (.getValue rs))]
+                (.add res [k v locale])))))))
+      res))
+                    
 
 (defn histogram
   [vs]
   (let [^HashMap res (HashMap.)]
     (doseq [v vs]
-      (if (.hasKey res v)
+      (if (.containsKey res v)
         (.put res v (inc (.get res v)))
         (.put res v 1)))
     (Collections/unmodifiableMap res)))
