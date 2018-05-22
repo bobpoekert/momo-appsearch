@@ -274,7 +274,6 @@
     (.verify)
     (parse-verification)))
 
-
 (defn load-apk
   [^bytes apk-data]
   (let [apk (ByteArrayApkFile. apk-data)

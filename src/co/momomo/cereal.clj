@@ -8,12 +8,17 @@
 
 (defn queue-seq
   [^LinkedBlockingQueue inp]
-  (let [v (.take inp)]
-    (if (= v ::closed)
-      (do
-        (.put inp ::closed)
-        nil)
-      (cons v (lazy-seq (queue-seq inp))))))
+  (loop [v (.take inp)]
+    (cond 
+      (instance? Throwable v)
+        (do
+          (prn v)
+          (recur (.take inp)))
+      (= v ::closed)
+        (do
+          (.put inp ::closed)
+          nil)
+      :else (cons v (lazy-seq (queue-seq inp))))))
 
 (defn close-queue!
   [^LinkedBlockingQueue q]
@@ -73,12 +78,15 @@
         (fn runner [core-id inp]
           (try
             (transduce transducer
-              (fn [_ v] 
-                (when-not (nil? v)
-                  (.put outq v))) nil inp)
+              (fn transducer-cb
+                ([v] 
+                  (when-not (nil? v)
+                    (.put outq v)))
+                ([_ v] (transducer-cb v))) nil inp)
             (catch Throwable e
-              (prn e)
-              (runner core-id inp)))))
+              (do
+                (.put outq e)
+                (runner core-id inp))))))
       (queue-seq outq)))
   ([inp transducer]
     (parmap inp {} transducer)))
