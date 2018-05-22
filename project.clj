@@ -5,6 +5,7 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :java-source-paths ["src/java"]
+  :jvm-opts ["-Xmx120G" "-XX:+UseLargePages" "-agentpath:/home/bob/libyjpagent.so"]
   :profiles {:dev {:dependencies [[inspector-jay "0.3"]]}
              :apkpure-aws {
                             :main co.momomo.appsearch.scripts.apkpure-aws

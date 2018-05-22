@@ -70,11 +70,15 @@
     (let [^LinkedBlockingQueue outq (LinkedBlockingQueue. 10)]
       (parrun inp
         (assoc opts :callback (partial close-queue! outq))
-        (fn [core-id inp]
-          (transduce transducer
-            (fn [_ v] 
-              (when-not (nil? v)
-                (.put outq v))) nil inp)))
+        (fn runner [core-id inp]
+          (try
+            (transduce transducer
+              (fn [_ v] 
+                (when-not (nil? v)
+                  (.put outq v))) nil inp)
+            (catch Throwable e
+              (prn e)
+              (runner core-id inp)))))
       (queue-seq outq)))
   ([inp transducer]
     (parmap inp {} transducer)))
