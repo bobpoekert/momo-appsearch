@@ -113,35 +113,36 @@
   [v & pairs]
   (reduce
     (fn [res [k mask]]
-      (if (zero? (bit-and mask v))
-        res
-        (conj res k)))
-    #{}
+      `(if (zero? (bit-and ~mask ~v))
+        ~res
+        (cons ~k ~res)))
+    '()
     (partition 2 pairs)))
 
 (defn dex-access
   [v]
   ;; https://www.cs.umd.edu/projects/PL/redexer/doc/Dex.html
-  (mask-flags v
-    :PUBLIC 		0x1
-    :PRIVATE 		0x2
-    :PROTECTED 		0x4
-    :STATIC 		0x8
-    :FINAL 		    0x10
-    :SYNCHRONIZED 	0x20
-    :VOLATILE 		0x40
-    :BRIDGE 		0x40
-    :TRANSIENT 		0x80
-    :VARARGS 		0x80
-    :NATIVE 		0x100
-    :INTERFACE 		0x200
-    :ABSTRACT 		0x400
-    :STRICT 		0x800
-    :SYNTHETIC 		0x1000
-    :ANNOTATION 	0x2000
-    :ENUM 		    0x4000
-    :CONSTRUCTOR 	0x10000
-    :DECLARED_SYNCHRONIZED 		0x20000))
+  (delay
+    (mask-flags v
+      :PUBLIC 		0x1
+      :PRIVATE 		0x2
+      :PROTECTED 		0x4
+      :STATIC 		0x8
+      :FINAL 		    0x10
+      :SYNCHRONIZED 	0x20
+      :VOLATILE 		0x40
+      :BRIDGE 		0x40
+      :TRANSIENT 		0x80
+      :VARARGS 		0x80
+      :NATIVE 		0x100
+      :INTERFACE 		0x200
+      :ABSTRACT 		0x400
+      :STRICT 		0x800
+      :SYNTHETIC 		0x1000
+      :ANNOTATION 	0x2000
+      :ENUM 		    0x4000
+      :CONSTRUCTOR 	0x10000
+      :DECLARED_SYNCHRONIZED 		0x20000)))
 
 (defn dex-visibility
   [v]
@@ -234,12 +235,11 @@
    :direct_methods (map dex-method (.getDirectMethods c))
    :virtual_methods (map dex-method (.getVirtualMethods c))})
 
-(defn get-dex
+(defn ^DexBackedDexFile get-dex
   [^AbstractApkFile apk]
   (let [^bytes data (.getFileData apk AndroidConstants/DEX_FILE)
         ^DexBackedDexFile dex (DexBackedDexFile. (Opcodes/getDefault) data)]
     dex))
-
 
 (defn parse-cert
   [^java.security.cert.X509Certificate c]
@@ -275,7 +275,6 @@
     (parse-verification)))
 
 
-(quote
 (defn load-apk
   [^bytes apk-data]
   (let [apk (ByteArrayApkFile. apk-data)
@@ -284,7 +283,7 @@
      :dex dex
      :classes (map dex-class (.getClasses dex))
      :manifest_xml (.getManifestXml apk)
-     :verification (delay (verify apk-data))})))
+     :verification (delay (verify apk-data))}))
 
 (defn get-resources
   [^AbstractApkFile apk]
@@ -326,11 +325,44 @@
         (.put res v 1)))
     (Collections/unmodifiableMap res)))
 
+(defmacro doiter
+  [[binder iter] & bodies]
+  `(when-not (nil? ~iter)
+    (let [^java.util.Iterator it# (.iterator ^Iterable ~iter)]
+      (while (.hasNext it#)
+        (let [~binder (.next it#)]
+          ~@bodies)))))
+
+(defn hist-add
+  [^HashMap m v]
+  (when-not (nil? v)
+    (if (.containsKey m v)
+      (.put m v (inc (.get m v)))
+      (.put m v 1))))
+
+(defn hash-instructions
+  [^DexBackedMethod m]
+  (let [v (.getImplementation m)]
+    (if (nil? v)
+      nil
+      (let [v (.getInstructions v)
+           ^java.util.Iterator it (.iterator v)]
+        (loop [res -1]
+          (if (.hasNext it)
+            (let [v (.next it)]
+              (if (nil? v)
+                (recur res)
+                (recur (hash-combine res (hash-instruction v)))))
+            res))))))
+
 (defn method-hashes
-  [apk-data]
-  (->>
-    (for [c (:classes apk-data)
-          m (concat (:direct_methods c) (:virtual_methods c))]
-      (:code_hash (:impl m)))
-    (remove nil?)
-    (histogram)))
+  [^bytes apk-data]
+  (let [^HashMap res (HashMap.)
+        dex (get-dex (ByteArrayApkFile. apk-data))]
+    (doiter [^DexBackedClassDef cls (.getClasses dex)]
+      (doiter [^DexBackedMethod m (.getDirectMethods cls)]
+        (hist-add res (hash-instructions m)))
+      (doiter [^DexBackedMethod m (.getVirtualMethods cls)]
+        (hist-add res (hash-instructions m))))
+   res)) 
+

@@ -49,8 +49,9 @@
     (.toByteArray out)))
 
 (defn file-datas
-  [^String infname]
-  (if-not (.endsWith infname ".tpxz")
-    [{:name infname :data (slrup-bytes (io/file infname))}]
-    (with-open [ins (io/input-stream (io/file infanme))]
-      (tpxz-files infname))))
+  [^java.io.File inf]
+  (let [infname (.getName inf)]
+    (prn infname)
+    (if-not (.endsWith infname ".tpxz")
+      [{:name infname :data (slurp-bytes inf)}]
+      (tpxz-files (io/input-stream inf)))))
