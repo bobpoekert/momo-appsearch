@@ -25,7 +25,9 @@
 
 (defn ^String sanitize
   [v]
-  (ss/replace v "\t" "\0"))
+  (-> v
+    (ss/replace "\t" "&#09;")
+    (ss/replace "\n" "&#10;")))
 
 (defn extract-text!
   [outfname apk-fnames]

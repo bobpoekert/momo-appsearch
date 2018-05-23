@@ -1,0 +1,3 @@
+[submodule "utils/mcdb"]
+	path = utils/mcdb
+	url = git@github.com:gstrauss/mcdb.git
