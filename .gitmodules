@@ -1,3 +1,6 @@
 [submodule "utils/mcdb"]
 	path = utils/mcdb
 	url = git@github.com:gstrauss/mcdb.git
+[submodule "utils/sstable/mtbl"]
+	path = utils/sstable/mtbl
+	url = git@github.com:farsightsec/mtbl.git
