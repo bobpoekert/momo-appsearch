@@ -29,6 +29,14 @@
     (ss/replace "\t" "&#09;")
     (ss/replace "\n" "&#10;")))
 
+(defn bad-key?
+  [^String k]
+  (or
+    (> (.indexOf k "common_") -1)
+    (> (.indexOf k "abc_") -1)
+    (> (.indexOf k "com_facebook_") -1)
+    (> (.indexOf k "mr_controller_") -1)))
+
 (defn extract-text!
   [outfname apk-fnames]
   (with-open [^java.io.Writer outf (io/writer (io/file outfname))]
@@ -37,14 +45,15 @@
                         (mapcat file-datas)
                         (map extract-data-text)))]
       (doseq [[k v locale] part]
-        (.write outf (sanitize n))
-        (.write outf "\t")
-        (.write outf (sanitize k))
-        (.write outf "\t")
-        (.write outf (sanitize locale))
-        (.write outf "\t")
-        (.write outf (sanitize v))
-        (.write outf "\n")))))
+        (when-not (bad-key? k) 
+          (.write outf (sanitize n))
+          (.write outf "\t")
+          (.write outf (sanitize k))
+          (.write outf "\t")
+          (.write outf (sanitize locale))
+          (.write outf "\t")
+          (.write outf (sanitize v))
+          (.write outf "\n"))))))
 
 (defn directory?
   [^java.io.File f]
