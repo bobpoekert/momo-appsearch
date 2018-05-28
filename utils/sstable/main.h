@@ -43,13 +43,13 @@ typedef struct string_row {
 
 typedef struct string_tree_node {
     string_row row;
-    string_tree_node *right;
-    string_tree_node *left;
+    struct string_tree_node *right;
+    struct string_tree_node *left;
 } string_tree_node;
 
 typedef struct string_tree {
     string_tree_node nodes[TREE_SIZE];
-    string_tree *next;
+    struct string_tree *next;
     size_t length;
 } string_tree;
 

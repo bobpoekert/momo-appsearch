@@ -30,7 +30,7 @@ size_t add_string(worker_ctx *ctx, char *string, size_t string_length) {
         flush_strings(ctx);
     }
     memcpy(ctx->strings_buffer + ctx->strings_buffer_offset, string, string_length);
-    ctx->strings_buffer_offset += string_legnth;
+    ctx->strings_buffer_offset += string_length;
     ctx->strings_offset += string_length;
     return offset;
 }
@@ -43,7 +43,8 @@ void populate_string_row(worker_ctx *ctx, string_row *row, char *string, size_t 
 
 string_tree *string_tree_alloc() {
     string_tree *res = malloc(sizeof(string_tree));
-    memset(res, 0, sizeof(string_tree));
+    res->next = NULL;
+    res->length = 0;
     return res;
 }
 
@@ -51,16 +52,17 @@ void string_tree_free(string_tree *h) {
     free(h);
 }
 
-inline bool string_tree_is_empty(string_tree *h, size_t idx) {
-    return h->heap[idx]->count == 0;
+inline char string_tree_is_empty(string_tree *h, size_t idx) {
+    return h->length < 1;
 }
 
-string_tree_node *string_tree_node_lookup(worker_ctx *ctx, string_tree *h, string_row *row) {
+string_tree_node *string_tree_node_lookup(worker_ctx *ctx, string_row *row) {
+    string_tree *h = ctx->head;
     if (h->length < 1) return 0;
     string_tree_node *current_node = h->nodes;
     while (1) {
         string_tree_node *parent = current_node;
-        char cmp = hash_compare(current_node->row->hash, row->hash);
+        char cmp = hash_compare(current_node->row.hash, row->hash);
         if (cmp == 0) {
             return current_node;
         } else if (cmp < 0) {
@@ -72,29 +74,35 @@ string_tree_node *string_tree_node_lookup(worker_ctx *ctx, string_tree *h, strin
     }
 }
 
-void string_tree_insert(worker_ctx *ctx, string_tree *h, string_row *row, char *string, size_t string_length) {
+void string_tree_insert(worker_ctx *ctx, string_row *row, char *string, size_t string_length) {
     /* caller is responsible for doing overflow checking */
-    string_tree_node *parent = string_tree_node_lookup(h, row);
+    string_tree *h = ctx->head;
+    string_tree_node *parent = string_tree_node_lookup(ctx, row);
     if (parent == 0) {
         /* tree is empty */
-        string_tree_node *target = h->nodes[0];
-        memcpy(target->row, row, sizeof(string_row));
+        string_tree_node *target = h->nodes;
+        memcpy(&(target[0].row), row, sizeof(string_row));
         return;
     }
-    char cmp = hash_compare(row->hash, parent->row->hash);
+    char cmp = hash_compare(row->hash, parent->row.hash);
     if (cmp == 0) {
-        parent->row->count++;
+        parent->row.count++;
     } else {
-        string_tree_node *target = h->nodes[h->length];
+        string_tree *t = ctx->tail;
+        string_tree_node *target = t->nodes + (t->length * sizeof(string_tree_node));
         populate_string_row(ctx, row, string, string_length);
-        memcpy(target->row, row, sizeof(string_row));
-        h->length++;
+        memcpy(&(target->row), row, sizeof(string_row));
+        t->length++;
         if (cmp < 0) {
             parent->left = target;
         } else {
             parent->right = target;
         }
     }
+}
+
+job *job_alloc() {
+    return malloc(sizeof(job));
 }
 
 int indexof(char *string, char target, size_t max_length) {
@@ -106,7 +114,7 @@ int indexof(char *string, char target, size_t max_length) {
     return -1;
 }
 
-void worker(void *vctx) {
+void *worker(void *vctx) {
     worker_ctx *ctx = vctx;
     queue *inq = ctx->inq;
     while (1) {
@@ -129,21 +137,20 @@ void worker(void *vctx) {
             murmur_hash(line, line_end, &row.hash);
 
             if (TREE_SIZE - ctx->tail->length < 1) {
-                string_tree *new_tree = malloc(sizeof(string_tree));
-                new_tree->length = 0;
-                new_tree->next = NULL;
+                string_tree *new_tree = string_tree_alloc();
                 ctx->tail->next = new_tree;
                 ctx->tail = new_tree;
             }
 
-            string_tree_insert(ctx, ctx->head, &row, line, (size_t) line_end);
+            string_tree_insert(ctx, &row, line, (size_t) line_end);
         }
         queue_put(ctx->pool, j);
     }
     flush_strings(ctx);
+    return NULL;
 }
 
-void input_reader(void *ctx) {
+void *input_reader(void *ctx) {
     queue *outq = ((inserter_ctx *) ctx)->outq;
     queue *pool = ((inserter_ctx *) ctx)->pool;
     size_t overflow_size = 0;
@@ -158,7 +165,7 @@ void input_reader(void *ctx) {
         if (read(0, buf + overflow_size, CHUNK_SIZE - overflow_size) == EOF) break;
         overflow_size = 0;
         while (overflow_size < CHUNK_SIZE) {
-            char c = buf[buffer_size - overflow_size];
+            char c = buf[CHUNK_SIZE - overflow_size];
             if (c == '\n') break;
             overflow_size++;
         }
@@ -173,6 +180,7 @@ void input_reader(void *ctx) {
     queue_free(outq);
     queue_free(pool);
     free(ctx);
+    return NULL;
 }
 
 int main(int argc, char **argv) {
@@ -187,26 +195,38 @@ int main(int argc, char **argv) {
     thread_count = atol(argv[1]);
 
     queue *q = queue_alloc(256);
-    pthread_t *inp_thread;
-    pthread_create(&inp_thread, NULL, input_reader, (void *) q);
 
+    size_t pool_size = thread_count * 3;
+    queue *pool = queue_alloc(pool_size);
+    for (size_t i=0; i < pool_size; i++) {
+        queue_put(pool, job_alloc());
+    }
+
+    pthread_t *inp_thread;
+    inserter_ctx ictx;
+    ictx.pool = pool;
+    ictx.outq = q;
     pthread_attr_t attr;
     pthread_attr_init(&attr);
     pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_JOINABLE);
+    
+    pthread_create(inp_thread, &attr, input_reader, (void *) &ictx);
 
-    pthread_t **worker_threads = malloc(sizeof(pthread_t *) * thread_count);
+    pthread_t *worker_threads = malloc(sizeof(pthread_t) * thread_count);
     worker_ctx *worker_contexts = malloc(sizeof(worker_ctx) * thread_count);
-    memset(worker_contexts, 0, sizeof(worker_ctx) * thread_count);
    
     for (size_t thread_id = 0; thread_id < thread_count; thread_id++) {
-        worker_ctx *ctx = worker_contexts[i];
+        worker_ctx *ctx = &worker_contexts[thread_id];
         ctx->inq = q;
-        pthread_create(worker_threads[thread_id], &attr, worker, (void *) ctx);
+        ctx->head = string_tree_alloc();
+        ctx->pool = pool;
+        pthread_create(&worker_threads[thread_id], &attr, worker, (void *) ctx);
     }
 
+    void *status;
+    pthread_join(*inp_thread, &status);
     for (size_t thread_id = 0; thread_id < thread_count; thread_id++) {
-        void *staus;
-        pthread_join(worker_threads[i], &status);
+        pthread_join(worker_threads[thread_id], &status);
     }
 
     pthread_exit(NULL);

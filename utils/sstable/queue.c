@@ -8,7 +8,7 @@ typedef struct queue {
     size_t max_size;
     size_t write_idx;
     size_t read_idx;
-    void *buffer;
+    void **buffer;
     pthread_mutex_t lock;
     pthread_cond_t can_produce;
     pthread_cond_t can_consume;
@@ -51,7 +51,7 @@ void queue_put(queue *q, void *item) {
 }
 
 void *queue_take(queue *q) {
-    pthread_mutex_lock(&q->mutex);
+    pthread_mutex_lock(&q->lock);
 
     while (queue_size(q) < 1) {
         pthread_cond_wait(&q->can_consume, &q->lock);
@@ -64,6 +64,6 @@ void *queue_take(queue *q) {
         q->read_idx = q->max_size;
     }
 
-    pthread_mutex_unlock(&q->mutex);
+    pthread_mutex_unlock(&q->lock);
     return res;
 }
