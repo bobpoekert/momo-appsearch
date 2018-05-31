@@ -17,6 +17,7 @@
              :download-apks {:main co.momomo.appsearch.scripts.download-apks}
              :extract-apk-hashes {:main co.momomo.appsearch.scripts.extract-apk-hashes}
              :extract-text {:main co.momomo.appsearch.scripts.extract-text}
+             :dedupe-text {:main co.momomo.appsearch.scripts.dedupe-text}
              :compress-apks {:main co.momomo.appsearch.scripts.compress-apks}}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.jsoup/jsoup "1.11.2"]

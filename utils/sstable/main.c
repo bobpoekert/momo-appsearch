@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <pthread.h>
+#include <math.h>
 #include "queue.c"
 #include "murmur3.c"
 #include "main.h"
@@ -183,6 +184,15 @@ void *input_reader(void *ctx) {
     return NULL;
 }
 
+size_t string_tree_total_length(string_tree *tree) {
+    size_t res = tree->length;
+    while (tree->next) {
+        tree = tree->next;
+        res += tree->length;
+    }
+    return res;
+}
+
 int main(int argc, char **argv) {
 
     size_t thread_count;
@@ -228,6 +238,15 @@ int main(int argc, char **argv) {
     for (size_t thread_id = 0; thread_id < thread_count; thread_id++) {
         pthread_join(worker_threads[thread_id], &status);
     }
+
+    string_tree **trees = malloc(sizeof(string_tree *) * thread_count);
+    size_t total_count = 0;
+    for (size_t i=0; i < thread_count; i++;) {
+        trees[i] = worker_contexts[i]->head;
+        total_count += string_tree_total_length(trees[i]);
+    }
+    size_t stack_size = (size_t) (log10(total_count) / log10(2.0)) * 2;
+
 
     pthread_exit(NULL);
     return 0;

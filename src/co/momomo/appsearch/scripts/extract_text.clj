@@ -61,4 +61,4 @@
 
 (defn -main
   [inp-dirname outfname]
-  (extract-text! outfname (remove directory? (file-seq (io/file inp-dirname)))))
+  (extract-text! outfname (into #{} (remove directory? (file-seq (io/file inp-dirname))))))
