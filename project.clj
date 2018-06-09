@@ -6,7 +6,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :java-source-paths ["src/java"]
   ;:jvm-opts ["-Xmx120G" "-XX:+UseLargePages" "-agentpath:/home/bob/libyjpagent.so"]
-  :jvm-opts ["-Xmx64G" "-agentpath:/home/bob/libyjpagent.so"]
+  ;:jvm-opts ["-Xmx64G" "-agentpath:/home/bob/libyjpagent.so"]
   :profiles {:dev {:dependencies [[inspector-jay "0.3"]]}
              :apkpure-aws {
                             :main co.momomo.appsearch.scripts.apkpure-aws
@@ -17,6 +17,7 @@
              :download-apks {:main co.momomo.appsearch.scripts.download-apks}
              :extract-apk-hashes {:main co.momomo.appsearch.scripts.extract-apk-hashes}
              :extract-text {:main co.momomo.appsearch.scripts.extract-text}
+             :s3-extract-text {:main co.momomo.appsearch.scripts.s3-extract-text}
              :dedupe-text {:main co.momomo.appsearch.scripts.dedupe-text}
              :compress-apks {:main co.momomo.appsearch.scripts.compress-apks}}
   :dependencies [[org.clojure/clojure "1.8.0"]

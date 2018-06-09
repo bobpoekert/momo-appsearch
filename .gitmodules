@@ -4,3 +4,9 @@
 [submodule "utils/sstable/mtbl"]
 	path = utils/sstable/mtbl
 	url = git@github.com:farsightsec/mtbl.git
+[submodule "server/sent2vec"]
+	path = server/sent2vec
+	url = git@github.com:epfml/sent2vec.git
+[submodule "server/annoy"]
+	path = server/annoy
+	url = git@github.com:spotify/annoy.git

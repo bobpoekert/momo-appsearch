@@ -27,7 +27,8 @@
           [java.util Arrays HashMap Collections ArrayList]
           [java.util.jar Manifest]
           [java.nio ByteBuffer]
-          [java.io File RandomAccessFile ByteArrayInputStream]))
+          [java.io File RandomAccessFile ByteArrayInputStream InputStream ByteArrayOutputStream]
+          [java.util.zip ZipInputStream ZipEntry ZipException]))
 
 (set! *warn-on-reflection* true)
    
@@ -284,14 +285,48 @@
      :manifest_xml (.getManifestXml apk)
      :verification (delay (verify apk-data))}))
 
+(defn get-zip-data
+  [^ZipInputStream zi]
+  (let [res (ByteArrayOutputStream.)
+        buf (byte-array 1024)]
+    (loop [len (.read zi buf 0 1024)]
+      (if (= -1 len)
+        (.toByteArray res)
+        (do
+          (.write res buf 0 len)
+          (recur (.read zi buf 0 1024)))))))
+
+(defprotocol ExtractFile
+  (extract-file [v k]))
+
+(defn get-zip-entry
+  [^ZipInputStream zi]
+  (try
+    (.getNextEntry zi)
+    (catch ZipException e :fail)))
+
+(extend-protocol ExtractFile
+  AbstractApkFile
+  (extract-file [v k]
+    (.getFileData v k))
+  InputStream
+  (extract-file [v k]
+    (let [zi (ZipInputStream. v)]
+      (loop [entry (get-zip-entry zi)]
+        (cond
+          (nil? entry) nil
+          (= entry :fail) (recur (get-zip-entry zi))
+          (= (.getName ^ZipEntry entry) k) (get-zip-data zi)
+          :else (recur (get-zip-entry zi)))))))
+
 (defn get-resources
-  [^AbstractApkFile apk]
-  (->
-    (ARSCDecoder/decode
-      (ByteArrayInputStream.
-        (.getFileData apk "resources.arsc"))
-      true true)
-     (.getPackages)))
+  [apk]
+  (when-let [v (extract-file apk "resources.arsc")]
+    (->
+      (ARSCDecoder/decode
+        (ByteArrayInputStream. ^bytes v)
+        true true)
+       (.getPackages))))
 
 (defmacro doarr
   [[bind arr] & bodies]
@@ -300,20 +335,20 @@
       ~@bodies)))
 
 (defn get-strings
-  [^AbstractApkFile apk]
+  [apk]
   (let [^objects resources (get-resources apk)
         res (ArrayList.)]
-    (doarr [^ResPackage p resources]
-      (doseq [^ResValuesFile fd (.listValuesFiles p)]
-        (let [^ResTypeSpec typ (.getType fd)
-              locale (.getQualifiers (.getFlags (.getConfig fd)))]
-          (when (.isString typ)
-            (doseq [^ResResource rs (.listResources fd)]
-              (let [k (.getName (.getResSpec rs))
-                    v (.encodeAsResXmlValue ^ResXmlEncodable (.getValue rs))]
-                (.add res [k v locale])))))))
+    (when-not (nil? resources)
+      (doarr [^ResPackage p resources]
+        (doseq [^ResValuesFile fd (.listValuesFiles p)]
+          (let [^ResTypeSpec typ (.getType fd)
+                locale (.getQualifiers (.getFlags (.getConfig fd)))]
+            (when (.isString typ)
+              (doseq [^ResResource rs (.listResources fd)]
+                (let [k (.getName (.getResSpec rs))
+                      v (.encodeAsResXmlValue ^ResXmlEncodable (.getValue rs))]
+                  (.add res [k v locale]))))))))
       res))
-                    
 
 (defn histogram
   [vs]

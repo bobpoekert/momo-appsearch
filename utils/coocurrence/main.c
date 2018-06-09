@@ -4,9 +4,12 @@
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <fcntl.h>
 #include "murmur3.c"
 
-#define TREE_CHUNK_SIZE 100000
+#define TREE_CHUNK_SIZE 1000
 #define BUFFER_SIZE 16777216
 #define SEED 0xdeadbeef
 
@@ -32,16 +35,25 @@ typedef struct Tree {
     size_t size;
 } Tree;
 
+TreeChunk *tree_chunk_alloc() {
+    TreeChunk *res = malloc(sizeof(TreeChunk));
+    memset(res->payload, 0, sizeof(TreeNode));
+    res->size = 0;
+    res->next = 0;
+    return res;
+}
+
 Tree *tree_alloc() {
     Tree *res = malloc(sizeof(Tree));
-    res->head_chunk = 0;
-    res->tail_chunk = 0;
+    TreeChunk *chunk = tree_chunk_alloc();
+    res->head_chunk = chunk;
+    res->tail_chunk = chunk;
     res->size = 0;
     return res;
 }
 
 TreeNode *tree_node_alloc(Tree *tree) {
-    if (tree->tail_chunk == NULL || tree->tail_chunk->size > TREE_CHUNK_SIZE) {
+    if (tree->tail_chunk == NULL || tree->tail_chunk->size >= TREE_CHUNK_SIZE) {
         TreeChunk *new_chunk = malloc(sizeof(TreeChunk));
         new_chunk->next = 0;
         new_chunk->size = 0;
@@ -51,9 +63,13 @@ TreeNode *tree_node_alloc(Tree *tree) {
     if (tree->head_chunk == NULL) {
         tree->head_chunk = tree->tail_chunk;
     }
-    TreeNode *res = &(tree->tail_chunk->payload[tree->tail_chunk->size]);
-    memset(res, 0, sizeof(TreeNode));
     tree->tail_chunk->size++;
+    TreeNode *res = &(tree->tail_chunk->payload[tree->tail_chunk->size]);
+    res->left = 0;
+    res->right = 0;
+    res->hash = 0;
+    res->value = 0;
+    res->count = 0;
     tree->size++;
     return res;
 }
@@ -63,15 +79,28 @@ TreeNode *tree_node_alloc_kv(Tree *tree, Hash a, Hash b) {
     new_node->hash = a;
     TreeNode *new_b = tree_node_alloc(tree);
     new_b->hash = b;
-    new_node->value = new_b;
-    new_node->count = -1;
     new_b->count = 1;
+    new_node->value = new_b;
     return new_node;
 }
 
 void tree_insert_hash_pair(Tree *tree, Hash a, Hash b) {
+    printf("\n\n");
     TreeNode *current_node = tree->head_chunk->payload;
+    TreeNode *value_node = 0;
+    printf("%x %x\n", a, b);
+    if (a == 0) printf("a is zero!\n");
+    if (b == 0) printf("b is zero!\n");
+    if (current_node->hash == 0) {
+        current_node->hash = a;
+        current_node->count = 0;
+        current_node->value = tree_node_alloc(tree);
+        current_node->value->hash = b;
+        current_node->value->count = 1;
+        return;
+    }
     while(1) {
+        printf("%x\n", current_node->hash);
         if (current_node->hash == a) {
             if (current_node->value == NULL) {
                 current_node->value = tree_node_alloc(tree);
@@ -79,12 +108,13 @@ void tree_insert_hash_pair(Tree *tree, Hash a, Hash b) {
                 current_node->value->count = 1;
                 return;
             } else {
-                current_node = current_node->value;
+                value_node = current_node->value;
+                break;
             }
-            break;
         } else if (current_node->hash < a) {
             if (current_node->left == NULL) {
                 current_node->left = tree_node_alloc_kv(tree, a, b);
+                current_node = current_node->left->value;
                 return;
             } else {
                 current_node = current_node->left;
@@ -92,33 +122,38 @@ void tree_insert_hash_pair(Tree *tree, Hash a, Hash b) {
         } else {
             if (current_node->right == NULL) {
                 current_node->right = tree_node_alloc_kv(tree, a, b);
+                current_node = current_node->right->value;
                 return;
             } else {
                 current_node = current_node->right;
             }
         }
     }
+    printf("--\n");
     while(1) {
-        if (current_node->hash == b) {
-            current_node->count++;
+        printf("%x\n", value_node->hash);
+        if (value_node->hash == b) {
+            value_node->count++;
             break;
-        } else if (current_node->hash < b) {
-            if (current_node->left == NULL) {
+        } else if (value_node->hash < b) {
+            if (value_node->left == NULL) {
                 TreeNode *new_node = tree_node_alloc(tree);
+                new_node->hash = b;
                 new_node->count = 1;
-                current_node->left = new_node;
+                value_node->left = new_node;
                 break;
             } else {
-                current_node = current_node->left;
+                value_node = value_node->left;
             }
         } else {
             TreeNode *new_node = tree_node_alloc(tree);
-            if (current_node->right == NULL) {
+            new_node->hash = b;
+            if (value_node->right == NULL) {
                 new_node->count = 1;
-                current_node->right = new_node;
+                value_node->right = new_node;
                 break;
             } else {
-                current_node = new_node;
+                value_node = new_node;
             }
         }
     }
@@ -126,7 +161,7 @@ void tree_insert_hash_pair(Tree *tree, Hash a, Hash b) {
 
 
 
-inline void write_int(int fd, uint32_t *buf, size_t *idx, uint32_t v) {
+void write_int(int fd, uint32_t *buf, size_t *idx, uint32_t v) {
     if (*idx >= BUFFER_SIZE) {
         write(fd, buf, *idx);
         *idx = 0;
@@ -136,38 +171,72 @@ inline void write_int(int fd, uint32_t *buf, size_t *idx, uint32_t v) {
 }
 
 void tree_write_file(Tree *tree, int fd) {
-    uint32_t output_buffer[BUFFER_SIZE];
+    uint32_t *output_buffer = malloc(BUFFER_SIZE);
     size_t idx = 0;
-    size_t stack_size = (log10((double) tree->size) / 0.301029995663981 /* log10(2) */) * 2;
+    /*size_t stack_size = (log10((double) tree->size) / 0.301029995663981 ) * 2;*/
+    size_t stack_size = 100000;
     TreeNode **stack = malloc(sizeof(TreeNode *) * stack_size);
     memset(stack, 0, sizeof(TreeNode *) * stack_size);
     int stack_idx = 0;
 
     TreeNode *cur = tree->head_chunk->payload;
-    Hash k;
+    Hash k = 0;
+
+#define WRITE_INT(v) \
+    if (idx >= BUFFER_SIZE) {\
+        write(fd, output_buffer, idx);\
+        idx = 0;\
+    }\
+    output_buffer[idx] = v;\
+    idx++;
 
     do {
+        if (cur != NULL) {
+            if (cur->left != 0)
+                printf("\"%x\" -> \"%x\" [color=red];\n", cur->hash, cur->left->hash);
+            if (cur->value != 0)
+                printf("\"%x\" -> \"%x\" [color=green];\n", cur->hash, cur->value->hash);
+            if (cur->right != 0)
+                printf("\"%x\" -> \"%x\" [color=blue];\n", cur->hash, cur->right->hash);
+        }
         if (cur == NULL) {
             stack_idx--;
             cur = stack[stack_idx];
-            if (cur->count == -1) {
-                k = cur->hash;
-                cur = cur->value;
+            if (cur->value != 0) {
+                k = 0;
             } else {
-                write_int(fd, output_buffer, &idx, k);
-                write_int(fd, output_buffer, &idx, cur->hash);
-                write_int(fd, output_buffer, &idx, cur->count);
                 cur = cur->right;
             }
-        } else {
+        } else if (cur->value == 0) {
+            if (k != 0) {
+                WRITE_INT(k)
+                WRITE_INT(cur->hash)
+                WRITE_INT(cur->count)
+            }
             stack[stack_idx] = cur;
             stack_idx++;
             cur = cur->left;
+        } else {
+            k = cur->hash;
+            cur = cur->value;
         }
     } while(stack_idx > 0);
+
+    if (idx > 0) {
+        write(fd, output_buffer, idx);
+    }
+
+    free(output_buffer);
+    free(stack);
 }
 
 int main(int argc, char **argv) {
+
+    char *infname = argv[1];
+    int infd = open(infname, O_RDONLY);
+
+    char *outfname = argv[2];
+    int outfd = open(outfname, O_CREAT | O_RDWR, S_IRWXU);
 
     char current_app_name[4096];
     size_t current_app_name_size = 0;
@@ -183,6 +252,8 @@ int main(int argc, char **argv) {
     char *current_line = malloc(BUFFER_SIZE);
     size_t current_line_idx = 0;
 
+    size_t current_buffer_size = 0;
+
     /*
      * 0: reading app name
      * 1: column 1 (skip)
@@ -192,10 +263,11 @@ int main(int argc, char **argv) {
 
     Tree *tree = tree_alloc();
 
-    if (read(0, input_buffer, BUFFER_SIZE) == EOF) return 1;
-    while(1) {
-        if (input_buffer_idx >= BUFFER_SIZE) {
-            if (read(0, input_buffer, BUFFER_SIZE) == EOF) {
+    current_buffer_size = read(infd, input_buffer, BUFFER_SIZE);
+    while(current_buffer_size > 1) {
+        if (input_buffer_idx >= current_buffer_size) {
+            current_buffer_size = read(infd, input_buffer, BUFFER_SIZE);
+            if (current_buffer_size == EOF) {
                 for (size_t l=0; l < app_hashes_idx; l++) {
                     for (size_t r=0; r < app_hashes_idx; r++) {
                         if (l != r) {
@@ -253,6 +325,6 @@ int main(int argc, char **argv) {
         input_buffer_idx++;
     }
 
-    tree_write_file(tree, 1);
+    tree_write_file(tree, outfd);
 
 }

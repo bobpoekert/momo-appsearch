@@ -12,3 +12,6 @@ pom.xml.asc
 *.sqlite
 *.fressian
 resources/aws_creds
+.DS_Store
+*.dSYM
+.vscode/

@@ -1,8 +1,10 @@
 (ns co.momomo.s3
   (require [clojure.java.io :as io]
-           [clojure.string :as ss])
+           [clojure.string :as ss]
+           [co.momomo.cereal :as cereal])
   (import [co.momomo S3UploadOutputStream]
           [java.io InputStream OutputStream ByteArrayInputStream]
+          [java.util.concurrent LinkedBlockingQueue]
           [com.amazonaws.services.s3 AmazonS3Client]
           [com.amazonaws.services.s3.model GetObjectRequest PutObjectRequest
             ObjectMetadata ObjectListing S3ObjectSummary]
@@ -12,6 +14,7 @@
 
 (defn ^AWSStaticCredentialsProvider creds
   [^String access-key ^String secret]
+  (prn access-key secret)
   (AWSStaticCredentialsProvider. (BasicAWSCredentials. access-key secret)))
 
 (def default-creds
@@ -72,13 +75,19 @@
   ([bucket prefix]
     (let [^AmazonS3Client s3 @s3-client
           ^ObjectListing listing (.listObjects s3 bucket prefix)
-          ^java.util.List summaries (.getObjectSummaries listing)]
-      (loop [listing listing]
-        (when (.isTruncated listing)
-          (let [listing (.listNextBatchOfObjects s3 listing)]
-            (.addAll summaries (.getObjectSummaries listing))
-            (recur listing))))
-      summaries))
+          ^java.util.List summaries (.getObjectSummaries listing)
+          outq (LinkedBlockingQueue. 20)]
+      (.start
+        (Thread.
+          (fn []
+            (loop [listing listing]
+              (when (.isTruncated listing)
+                (let [listing (.listNextBatchOfObjects s3 listing)]
+                  (doseq [v (.getObjectSummaries listing)]
+                    (.put outq v))
+                  (recur listing))))
+            (.put outq :cereal/closed))))
+      (cereal/queue-seq outq)))
   ([bucket] (list-bucket-summaries bucket "")))
 
 
