@@ -18,7 +18,6 @@
   [seen bucket keyname]
   (if (contains? @seen keyname)
     (do
-      (prn "skip")
       [nil []])
     (with-open [ins (s3/input-stream bucket keyname)]
       (prn keyname)
@@ -30,17 +29,23 @@
           [nil []])))))
 
 (defn extract-text!
-  [outfname bucket-name]
-  (with-open [^java.io.Writer outf (java.io.OutputStreamWriter. (java.util.zip.GZIPOutputStream. (io/output-stream (io/file outfname))))]
-    (let [bucket-keys (s3/list-bucket bucket-name)
-          seen (atom #{})]
+  [seen-name outfname bucket-name]
+  (with-open [^java.io.Writer outf (->
+                                    (io/file outfname)
+                                    (io/output-stream)
+                                    (java.util.zip.GZIPOutputStream.)
+                                    (java.io.OutputStreamWriter.))]
+    (let [bucket-keys (drop-while #(not (= % "com.tiens") )(s3/list-bucket bucket-name))
+          seen (with-open [ss (io/reader (io/file seen-name))]
+                (atom (into #{} (map (fn [^String v] (.trim v)) (line-seq ss)))))]
       (doseq [[n part] (cereal/parmap bucket-keys
                         {:core-cnt 10}
                         (map (partial extract-stream-text seen bucket-name)))]
-        (prn n)
+        (when-not (nil? n)
+          (prn n))
         (doseq [e part]
           (xt/write-part! outf n e))))))
 
 (defn -main
-  [bucket outfname]
-  (extract-text! outfname bucket))
+  [& args]
+  (apply extract-text! args))
