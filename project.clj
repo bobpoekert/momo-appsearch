@@ -17,6 +17,7 @@
              :download-apks {:main co.momomo.appsearch.scripts.download-apks}
              :extract-apk-hashes {:main co.momomo.appsearch.scripts.extract-apk-hashes}
              :extract-text {:main co.momomo.appsearch.scripts.extract-text}
+             :s3-extract-text {:main co.momomo.appsearch.scripts.s3-extract-text}
              :dedupe-text {:main co.momomo.appsearch.scripts.dedupe-text}
              :pairwise-text-hashes {:main co.momomo.appsearch.scripts.pairwise-text-hashes}
              :compress-apks {:main co.momomo.appsearch.scripts.compress-apks}}

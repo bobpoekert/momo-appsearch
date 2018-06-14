@@ -37,6 +37,19 @@
     (> (.indexOf k "com_facebook_") -1)
     (> (.indexOf k "mr_controller_") -1)))
 
+(defn write-part!
+  [^java.io.Writer outf n [k v locale]]
+  (when-not (bad-key? k) 
+    (.write outf (sanitize n))
+    (.write outf "\t")
+    (.write outf (sanitize k))
+    (.write outf "\t")
+    (.write outf (sanitize locale))
+    (.write outf "\t")
+    (.write outf (sanitize v))
+    (.write outf "\n")))
+  
+
 (defn extract-text!
   [outfname apk-fnames]
   (with-open [^java.io.Writer outf (io/writer (io/file outfname))]
@@ -44,16 +57,8 @@
                       (comp
                         (mapcat file-datas)
                         (map extract-data-text)))]
-      (doseq [[k v locale] part]
-        (when-not (bad-key? k) 
-          (.write outf (sanitize n))
-          (.write outf "\t")
-          (.write outf (sanitize k))
-          (.write outf "\t")
-          (.write outf (sanitize locale))
-          (.write outf "\t")
-          (.write outf (sanitize v))
-          (.write outf "\n"))))))
+      (doseq [e part]
+        (write-part! outf n e)))))
 
 (defn directory?
   [^java.io.File f]
