@@ -7,8 +7,14 @@
 #include "murmur3.c"
 
 #define TREE_CHUNK_SIZE 100000
-#define BUFFER_SIZE 16777216
+#define BUFFER_SIZE 1677721
 #define SEED 0xdeadbeef
+
+void *checked_malloc(size_t size) {
+    printf("%d\n", size);
+    void *res = malloc(size);
+    if (res == NULL) abort();
+}
 
 typedef uint32_t Hash;
 
@@ -17,7 +23,7 @@ typedef struct TreeNode {
     struct TreeNode *right;
     Hash hash;
     struct TreeNode *value;
-    uint64_t count;
+    uint32_t count;
 } TreeNode;
 
 typedef struct TreeChunk {
@@ -33,25 +39,26 @@ typedef struct Tree {
 } Tree;
 
 Tree *tree_alloc() {
-    Tree *res = malloc(sizeof(Tree));
-    res->head_chunk = 0;
-    res->tail_chunk = 0;
+    Tree *res = checked_malloc(sizeof(Tree));
+    TreeChunk *chunk = checked_malloc(sizeof(TreeChunk));
+    res->head_chunk = chunk;
+    res->tail_chunk = chunk;
     res->size = 0;
     return res;
 }
 
 TreeNode *tree_node_alloc(Tree *tree) {
     if (tree->tail_chunk == NULL || tree->tail_chunk->size > TREE_CHUNK_SIZE) {
-        TreeChunk *new_chunk = malloc(sizeof(TreeChunk));
+        TreeChunk *new_chunk = checked_malloc(sizeof(TreeChunk));
         new_chunk->next = 0;
         new_chunk->size = 0;
-        tree->tail_chunk->next = new_chunk;
+        new_chunk->next = new_chunk;
         tree->tail_chunk = new_chunk;
     }
     if (tree->head_chunk == NULL) {
         tree->head_chunk = tree->tail_chunk;
     }
-    TreeNode *res = &(tree->tail_chunk->payload[tree->tail_chunk->size]);
+    TreeNode *res = tree->tail_chunk->payload;
     memset(res, 0, sizeof(TreeNode));
     tree->tail_chunk->size++;
     tree->size++;
@@ -70,7 +77,26 @@ TreeNode *tree_node_alloc_kv(Tree *tree, Hash a, Hash b) {
 }
 
 void tree_insert_hash_pair(Tree *tree, Hash a, Hash b) {
+    if (tree == NULL) {
+        printf("tree is null!\n");
+        fflush(stdout);
+        abort();
+    }
+    if (tree->head_chunk == NULL) {
+        tree->head_chunk = checked_malloc(sizeof(TreeChunk));
+        tree->tail_chunk = tree->head_chunk;
+    }
     TreeNode *current_node = tree->head_chunk->payload;
+    if (tree->size < 1) {
+        current_node->hash = a;
+        current_node->count = -1;
+        current_node->left = 0;
+        current_node->right = 0;
+        current_node->value = tree_node_alloc(tree);
+        current_node->value->hash = b;
+        current_node->value->count = 1;
+        return;
+    }
     while(1) {
         if (current_node->hash == a) {
             if (current_node->value == NULL) {
@@ -124,8 +150,6 @@ void tree_insert_hash_pair(Tree *tree, Hash a, Hash b) {
     }
 }
 
-
-
 inline void write_int(int fd, uint32_t *buf, size_t *idx, uint32_t v) {
     if (*idx >= BUFFER_SIZE) {
         write(fd, buf, *idx);
@@ -139,7 +163,7 @@ void tree_write_file(Tree *tree, int fd) {
     uint32_t output_buffer[BUFFER_SIZE];
     size_t idx = 0;
     size_t stack_size = (log10((double) tree->size) / 0.301029995663981 /* log10(2) */) * 2;
-    TreeNode **stack = malloc(sizeof(TreeNode *) * stack_size);
+    TreeNode **stack = checked_malloc(sizeof(TreeNode *) * stack_size);
     memset(stack, 0, sizeof(TreeNode *) * stack_size);
     int stack_idx = 0;
 
@@ -175,12 +199,12 @@ int main(int argc, char **argv) {
     char reading_app_name[4096];
     size_t reading_app_name_size = 0;
 
-    Hash *current_app_hashes = malloc(sizeof(Hash) * 10000);
+    Hash *current_app_hashes = checked_malloc(sizeof(Hash) * 10000);
     size_t app_hashes_idx = 0;
-    char *input_buffer = malloc(BUFFER_SIZE);
+    char *input_buffer = checked_malloc(BUFFER_SIZE);
     size_t input_buffer_idx = 0;
 
-    char *current_line = malloc(BUFFER_SIZE);
+    char *current_line = checked_malloc(BUFFER_SIZE);
     size_t current_line_idx = 0;
 
     /*

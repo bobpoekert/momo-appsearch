@@ -6,7 +6,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :java-source-paths ["src/java"]
   ;:jvm-opts ["-Xmx120G" "-XX:+UseLargePages" "-agentpath:/home/bob/libyjpagent.so"]
-  :jvm-opts ["-Xmx64G" "-agentpath:/home/bob/libyjpagent.so"]
+  ;:jvm-opts ["-Xmx64G" "-agentpath:/home/bob/libyjpagent.so"]
   :profiles {:dev {:dependencies [[inspector-jay "0.3"]]}
              :apkpure-aws {
                             :main co.momomo.appsearch.scripts.apkpure-aws
@@ -18,6 +18,7 @@
              :extract-apk-hashes {:main co.momomo.appsearch.scripts.extract-apk-hashes}
              :extract-text {:main co.momomo.appsearch.scripts.extract-text}
              :dedupe-text {:main co.momomo.appsearch.scripts.dedupe-text}
+             :pairwise-text-hashes {:main co.momomo.appsearch.scripts.pairwise-text-hashes}
              :compress-apks {:main co.momomo.appsearch.scripts.compress-apks}}
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.jsoup/jsoup "1.11.2"]
@@ -42,7 +43,7 @@
                  [org.clojure/data.xml "0.0.8"]
                  [org.asynchttpclient/async-http-client "2.4.4"]
                  [manifold "0.1.6"]
-                 [net.sf.trove4j/trove4j "3.0.2"]
+                 [net.sf.trove4j/trove4j "3.0.3"]
                  [xpp3/xpp3 "1.1.4c"]
                  [xmlunit/xmlunit "1.3"]
                  [org.yaml/snakeyaml "1.18"]
