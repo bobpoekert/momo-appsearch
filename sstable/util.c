@@ -139,7 +139,7 @@ uint32_t heap_insert_counts_uint32(
 
 #define CACHE_HEAP_SIZE 4000
 
-void hashes_from_fd(int inp_fd, int hashes_fd, int strings_fd) {
+void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname) {
 
     size_t buffer_size;
     char *current_line;
@@ -155,8 +155,8 @@ void hashes_from_fd(int inp_fd, int hashes_fd, int strings_fd) {
     FILE *inp_f;
 
     inp_f = fdopen(inp_fd, "r");
-    hashes_f = fdopen(hashes_fd, "w");
-    strings_f = fdopen(strings_fd, "w");
+    hashes_f = fopen(hashes_fname, "w");
+    strings_f = fopen(strings_fname, "w");
 
     buffer_size = 1024 * 1024;
     current_line = malloc(buffer_size);
@@ -172,7 +172,8 @@ void hashes_from_fd(int inp_fd, int hashes_fd, int strings_fd) {
 
         current_hash = hash_bytes(current_line, line_size - 1);
 
-        /* clip off the most frequent duplicated using a top-k heap
+        /* clip off the most frequent duplicates using a top-k heap
+         * heap size is chosen to be small enough to fit in L2 cache
          * this should be a significant perf improvement if the
          * frequency distribution is zipfian-ish
          */

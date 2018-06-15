@@ -2,6 +2,10 @@ PYINCLUDE := $(shell python -c 'from distutils.sysconfig import get_python_inc; 
 PYLIB := $(shell python -c 'import distutils.sysconfig as ss; print ss.get_python_lib()')
 NUMPYINCLUDE := $(shell python -c 'import numpy; print numpy.get_include()')
 
+clean:
+	rm sstable.so
+	rm util.a
+	rm util.o
 
 util.a:
 	gcc -c -g -fPIC -Ofast -Wall -o util.o util.c

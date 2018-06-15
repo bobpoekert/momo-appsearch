@@ -1,5 +1,5 @@
 from libc.stdint cimport *
-from libc.stdio cimport fdopen, fread, fclose, fwrite, FILE
+from libc.stdio cimport fopen, fdopen, fread, fclose, fwrite, FILE
 from libc.stdlib cimport malloc, free
 
 cdef extern from "stdio.h":
@@ -9,18 +9,23 @@ import numpy as np
 cimport numpy as np
 
 cdef extern from "util.h":
-    void hashes_from_fd(int inp_fd, int hashes_fd, int strings_fd)
+    void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname)
 
-def build_index(infile, hashes_tempfile, hashes_outfile, strings_tempfile, strings_outfile):
+def build_index(infile, hashes_tempname, hashes_outname, strings_tempname, strings_outname):
 
-    hashes_from_fd(infile.fileno(), hashes_tempfile.fileno(), strings_tempfile.fileno())
+    cdef char *hashes_tempname_c = hashes_tempname
+    cdef char *hashes_outname_c = hashes_outname
+    cdef char *strings_tempname_c = strings_tempname
+    cdef char *strings_outname_c = strings_outname
 
-    hash_offsets = np.memmap(hashes_tempfile, dtype=np.uint32).reshape((-1, 2))
+    hashes_from_fd(infile.fileno(), hashes_tempname_c, strings_tempname_c)
+
+    hash_offsets = np.memmap(hashes_tempname, dtype=np.uint32).reshape((-1, 2))
     cdef size_t n_items = hash_offsets.shape[0]
     cdef np.ndarray[np.uint32_t, ndim=1] hashes = hash_offsets[:, 0]
-    cdef np.ndarray[np.uint64_t, ndim=1] sort_indexes = np.argsort(hashes)
+    cdef np.ndarray[long, ndim=1] sort_indexes = np.argsort(hashes)
 
-    cdef np.ndarray[np.npy_bool, ndim=1] dupe_mask = np.zeros(n_items, dtype=np.bool)
+    cdef np.ndarray[np.npy_bool, ndim=1] dupe_mask = np.zeros(n_items, dtype=np.uint8)
 
     cdef size_t idx = 0
     cdef size_t max_idx = n_items
@@ -36,15 +41,16 @@ def build_index(infile, hashes_tempfile, hashes_outfile, strings_tempfile, strin
         prev_hash = cur_hash
         idx += 1
 
-    uniq_hashes = hashes[dupe_mask]
-    uniq_offsets = np.zeros(uniq_hashes.shape, dtype=np.uitn32)
+    _uniq_hashes = hashes[dupe_mask]
+    cdef np.ndarray[np.uint32_t, ndim=1] uniq_hashes = _uniq_hashes
+    cdef np.ndarray[np.uint32_t, ndim=1] uniq_offsets = np.zeros(_uniq_hashes.shape, dtype=np.uint32)
 
     cdef size_t current_offset = 0
     cdef size_t current_idx = 0
     cdef size_t outp_idx = 0
     cdef ssize_t line_size = 0
-    cdef FILE *cfile = fdopen(strings_tempfile.fileno(), "r")
-    cdef FILE *outfile = fdopen(strings_outfile.fileno(), "w")
+    cdef FILE *cfile = fopen(strings_tempname_c, "r")
+    cdef FILE *outfile = fopen(strings_outname_c, "w")
     cdef char *line_buf = <char *> malloc(1024)
     cdef size_t line_buf_size = 1024
 
@@ -53,7 +59,7 @@ def build_index(infile, hashes_tempfile, hashes_outfile, strings_tempfile, strin
             line_size = getdelim(&line_buf, &line_buf_size, 0, cfile)
             if line_size < 0:
                 break
-            if dupe_mask[current_idx]:
+            if dupe_mask[current_idx] != 0:
                 fwrite(line_buf, line_size, 1, outfile)
                 uniq_offsets[outp_idx] = current_offset
                 current_offset += line_size
@@ -64,4 +70,5 @@ def build_index(infile, hashes_tempfile, hashes_outfile, strings_tempfile, strin
         fclose(outfile)
         free(line_buf)
 
-    np.concatenate((uniq_hashes, uniq_offsets)).tofile(hashes_outfile)
+    uniq_sort_indexes = sort_indexes[dupe_mask]
+    np.concatenate((uniq_hashes[uniq_sort_indexes], uniq_offsets[uniq_sort_indexes])).tofile(hashes_outname)
