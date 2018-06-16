@@ -3,6 +3,7 @@
 import numpy as np
 import sys
 from variances import variances
+from sstable import build_mat_index
 
 if __name__ == '__main__':
     hashes = np.memmap(sys.argv[1], dtype=[('a', np.uint32), ('b', np.uint32), ('count', np.uint64)])
@@ -25,17 +26,6 @@ if __name__ == '__main__':
 
     amb_e, counts_e, sums_e, sums_squares_e, _ = variances(uniq.shape[0], a_sorted, scores_e)
 
-    with open(sys.argv[2], 'w') as outf:
-        # chunk_size = file_size / 4
-        # a_start = 0
-        # b_start = chunk_size
-        # scores_start = chunk_size * 2
-        # n_rows = chunk_size / 4
-        a_sorted.tofile(outf)
-        b_sorted.tofile(outf)
-        scores_e.tofile(outf)
+    build_mat_index(a_sorted, np.transpose((b_sorted, scores_e)), sys.argv[2], '%s.txt' % sys.argv[2])
 
-    with open(sys.argv[3], 'w') as outf:
-        # amb_start = file_size / 3
-        a_sorted.tofile(outf)
-        amb_t.tofile(outf)
+    build_mat_index(a_sorted, amb_e, sys.argv[3], '%s.txt' % sys.argv[3])

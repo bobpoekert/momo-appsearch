@@ -7,7 +7,9 @@ cdef extern from "stdio.h":
 
 import numpy as np
 cimport numpy as np
+from cython cimport view
 import os
+import codecs
 
 cdef extern from "util.h":
     void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname)
@@ -91,6 +93,59 @@ def build_index(infile, hashes_tempname, hashes_outname, strings_tempname, strin
     uniq_sort_indexes = sort_indexes[dupe_mask]
     np.concatenate((uniq_hashes[uniq_sort_indexes], uniq_offsets[uniq_sort_indexes])).tofile(hashes_outname)
 
+
+def build_mat_index(_hashes, _values, _hashes_fname, _strings_fname):
+    """
+    takes an array of hashes and a matrix with the same height of values
+    and generates an sstable index of hashes -> matrix rows
+    """
+    cdef np.ndarray[np.uint32_t, ndim=1] hashes = _hashes
+    cdef np.ndarray[long, ndim=1] sort_indexes = np.argsort(hashes)
+
+    cdef np.ndarray[np.uint32_t, ndim=1] sorted_hashes = hashes[sort_indexes]
+    cdef np.ndarray sorted_values = _values[sort_indexes]
+
+    cdef char *hashes_fname = _hashes_fname
+    cdef char *strings_fname = _strings_fname
+    cdef size_t n_rows = _hashes.shape[0]
+
+    cdef size_t row_idx = 0
+    cdef uint32_t current_hash
+    cdef uint32_t prev_hash = 0
+    cdef size_t hash_idx = 0
+    cdef uint32_t current_offset = 0
+    cdef np.ndarray[np.uint32_t, ndim=1] offsets = np.zeros((n_rows,), dtype=np.uint32)
+    cdef np.ndarray[np.uint32_t, ndim=1] uniq_hashes = np.zeros((n_rows,), dtype=np.uint32)
+    cdef np.ndarray row
+    cdef uint32_t[::1] row_buf
+    cdef size_t row_size
+
+    cdef FILE *strings_outf = fopen(strings_fname, "w")
+    try:
+        while row_idx < n_rows:
+            current_hash = sorted_hashes[row_idx]
+            if current_hash != prev_hash:
+                uniq_hashes[hash_idx] = prev_hash
+                offsets[hash_idx] = current_offset
+                hash_idx += 1
+            row = sorted_values[row_idx]
+            if not row.flags['C_CONTIGUOUS']:
+                row = np.ascontiguousarray(row)
+            row_buf = row
+            row_size = row.size
+            fwrite(&row_buf[0], sizeof(uint32_t), row_size, strings_outf)
+            current_offset += row_size
+            row_idx += 1
+            prev_hash = current_hash
+
+        uniq_hashes[hash_idx] = prev_hash
+        offsets[hash_idx] = current_offset
+    finally:
+        fclose(strings_outf)
+
+    np.concatenate((uniq_hashes[:hash_idx], offsets[:hash_idx])).tofile(_strings_fname)
+
+
 class SSTable(object):
 
     def __init__(self, hashes_fname, strings_fname):
@@ -100,17 +155,39 @@ class SSTable(object):
         self.offsets = self.hashes_file[self.hashes_length:]
         self.strings = open(strings_fname, 'r')
 
+    def decode(self, row):
+        return row.decode('utf-8')
+
     def get(self, k, default=None):
-        hash_idx = np.searchsorted(self.hashes, k)[0]
+        hash_idx = np.searchsorted(self.hashes, k)
         if self.hashes[hash_idx] != k:
             return default
         offset = self.offsets[hash_idx]
         self.strings.seek(offset)
-        if hash_idx < self.hashes_length:
+        if hash_idx < self.hashes_length-1:
             length = self.offsets[hash_idx + 1] - offset
-            return self.strings.read(length)
+            return self.decode(self.strings.read(length))
         else:
-            return self.strings.read()
+            return self.decode(self.strings.read())
+
+    def itervalues(self):
+        idx = 0
+        cursor = 0
+        while idx < self.hashes_length:
+            self.strings.seek(cursor)
+            if idx < self.hashes_length - 1:
+                length = self.offsets[cursor + 1] - cursor
+                yield self.decode(self.strings.read(length))
+            else:
+                yield self.decode(self.strings.read())
+            idx += 1
+            cursor += length
+
+    def values(self):
+        return list(self.iteravlues())
+
+    def keys(self):
+        return self.hashes
 
     def __getitem__(self, k):
         res = self.get(k)
@@ -124,3 +201,13 @@ class SSTable(object):
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.strings.close()
         return False
+
+class MatSSTable(SSTable):
+
+    def __init__(self, *args, dtype=None):
+        assert dtype is not None
+        self.dtype = dtype
+        SSTable.__init__(self, *args)
+
+    def decode(self, blob):
+        return np.frombuffer(blob, dtype=self.dtype)
