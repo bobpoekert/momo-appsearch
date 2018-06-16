@@ -7,6 +7,7 @@ cdef extern from "stdio.h":
 
 import numpy as np
 cimport numpy as np
+import os
 
 cdef extern from "util.h":
     void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname)
@@ -89,3 +90,37 @@ def build_index(infile, hashes_tempname, hashes_outname, strings_tempname, strin
 
     uniq_sort_indexes = sort_indexes[dupe_mask]
     np.concatenate((uniq_hashes[uniq_sort_indexes], uniq_offsets[uniq_sort_indexes])).tofile(hashes_outname)
+
+class SSTable(object):
+
+    def __init__(self, hashes_fname, strings_fname):
+        self.hashes_file = np.memmap(hashes_fname, dtype=np.uint32)
+        self.hashes_length = self.hashes_file.shape[0] / 2
+        self.hashes = self.hashes_file[:self.hashes_length]
+        self.offsets = self.hashes_file[self.hashes_length:]
+        self.strings = open(strings_fname, 'r')
+
+    def get(self, k, default=None):
+        hash_idx = np.searchsorted(self.hashes, k)[0]
+        if self.hashes[hash_idx] != k:
+            return default
+        offset = self.offsets[hash_idx]
+        self.strings.seek(offset)
+        if hash_idx < self.hashes_length:
+            length = self.offsets[hash_idx + 1] - offset
+            return self.strings.read(length)
+        else:
+            return self.strings.read()
+
+    def __getitem__(self, k):
+        res = self.get(k)
+        if res == None:
+            raise KeyError('%d' % k)
+        return res
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.strings.close()
+        return False
