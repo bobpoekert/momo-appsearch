@@ -1,6 +1,6 @@
 from libc.stdint cimport *
 from libc.stdio cimport fopen, fdopen, fread, fclose, fwrite, FILE
-from libc.stdlib cimport malloc, free
+from libc.stdlib cimport malloc, free, realloc
 
 cdef extern from "stdio.h":
     ssize_t getdelim(char **lineptr, size_t *n, int delim, FILE *stream)
@@ -22,6 +22,7 @@ def build_index(infile, hashes_tempname, hashes_outname, strings_tempname, strin
 
     hash_offsets = np.memmap(hashes_tempname, dtype=np.uint32).reshape((-1, 2))
     cdef size_t n_items = hash_offsets.shape[0]
+    cdef np.ndarray[np.uint32_t, ndim=1] inp_offsets = hash_offsets[:, 1]
     cdef np.ndarray[np.uint32_t, ndim=1] hashes = hash_offsets[:, 0]
     cdef np.ndarray[long, ndim=1] sort_indexes = np.argsort(hashes)
 
@@ -54,13 +55,29 @@ def build_index(infile, hashes_tempname, hashes_outname, strings_tempname, strin
     cdef char *line_buf = <char *> malloc(1024)
     cdef size_t line_buf_size = 1024
 
+    if line_buf == NULL:
+        raise MemoryError()
+
     try:
         while 1:
             line_size = getdelim(&line_buf, &line_buf_size, 0, cfile)
-            if line_size < 0:
-                break
+            if current_idx > 0:
+                line_size = inp_offsets[current_idx] - inp_offsets[current_idx - 1]
+            else:
+                line_size = inp_offsets[current_idx + 1]
+
+            if line_buf_size < line_size:
+                line_size = max(line_size * 2, line_buf_size)
+                line_buf = <char *> realloc(line_buf, line_size)
+                if line_buf == NULL:
+                    raise MemoryError()
+
+            if fread(line_buf, line_size, 1, cfile) < line_size:
+                raise IOError('Failed to read temporary strings file')
+
             if dupe_mask[current_idx] != 0:
-                fwrite(line_buf, line_size, 1, outfile)
+                if fwrite(line_buf, line_size, 1, outfile) < line_size:
+                    raise IOError('Failed to write to strings file')
                 uniq_offsets[outp_idx] = current_offset
                 current_offset += line_size
                 outp_idx += 1

@@ -183,8 +183,6 @@ void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname) {
 
         if (heap_insert_res < 1) {
 
-            current_line[line_size - 1] = 0; /* replace \n with \0 */
-
             fwrite(&current_hash, sizeof(current_hash), 1, hashes_f);
             fwrite(&current_strings_offset, sizeof(current_strings_offset), 1, hashes_f);
             fwrite(current_line, line_size, 1, strings_f);
