@@ -3,6 +3,7 @@
 import numpy as np
 import sys
 from variances import variances
+sys.path.append('../sstable')
 from sstable import build_mat_index
 
 if __name__ == '__main__':

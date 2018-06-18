@@ -145,7 +145,7 @@ void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname) {
     char *current_line;
     ssize_t line_size;
     uint32_t current_hash;
-    uint64_t current_strings_offset;
+    uint32_t current_strings_offset;
     size_t heap_size;
     uint32_t *heap;
     uint32_t heap_insert_res;
@@ -169,6 +169,8 @@ void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname) {
     while(1) {
         line_size = getline(&current_line, &buffer_size, inp_f);
         if (line_size < 0) break;
+        if (line_size < 1) continue;
+        line_size--; /* strip trailing newline */
 
         current_hash = hash_bytes(current_line, line_size - 1);
 
@@ -185,9 +187,11 @@ void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname) {
 
             fwrite(&current_hash, sizeof(current_hash), 1, hashes_f);
             fwrite(&current_strings_offset, sizeof(current_strings_offset), 1, hashes_f);
+            fwrite(&line_size, sizeof(line_size), 1, strings_f);
             fwrite(current_line, line_size, 1, strings_f);
 
             current_strings_offset += line_size;
+            current_strings_offset += sizeof(line_size);
 
         }
     }
