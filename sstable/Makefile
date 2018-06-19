@@ -14,3 +14,6 @@ util.a:
 sstable.so: util.a
 	cython -o pysstable.c sstable.pyx
 	gcc -g -shared -pthread -L$(PYLIB)/../.. -lpython2.7 -fPIC -fwrapv -Ofast -Wall -fno-strict-aliasing -I$(PYINCLUDE) -I$(NUMPYINCLUDE) -o sstable.so pysstable.c util.a
+
+test: sstable.so
+	python test.py

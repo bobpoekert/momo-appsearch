@@ -143,6 +143,7 @@ class HashesFromFdTest(TestCase):
             length = self.offsets2[idx + 1] - offset
             string = self.get_res_string(offset, length)
             self.assertEqual(string, row)
+            self.assertEqual(self.table.get(hh), row.decode('utf-8'))
 
 if __name__ == '__main__':
     tt.main()

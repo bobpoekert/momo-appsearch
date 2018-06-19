@@ -1,5 +1,5 @@
 from libc.stdint cimport *
-from libc.stdio cimport fopen, fdopen, fread, fclose, fwrite, FILE, ferror, perror, feof, fseek, SEEK_SET, getline, SEEK_CUR
+from libc.stdio cimport fopen, fdopen, fread, fclose, fwrite, FILE, ferror, perror, feof, fseek, SEEK_SET, getline, SEEK_CUR, ftell
 from libc.stdlib cimport malloc, free, realloc
 from libc.string cimport strerror
 import os
@@ -108,25 +108,32 @@ def build_index(infile, hashes_tempname, hashes_outname, strings_tempname, strin
 
     cdef uint32_t line_size = 0
     try:
+        print n_uniq
         for current_idx in range(n_uniq):
 
             current_uniq_offset = uniq_offsets[current_idx]
 
             #print current_idx, current_uniq_offset
 
+            if current_idx % 10000 == 0:
+                print current_idx
+
             assert current_uniq_offset < strings_temp_size
 
             line_size = (<uint32_t *> (&strings_tempfile[current_uniq_offset]))[0]
+
 
             #print line_size
 
             #if line_size > 10000:
             #    break
 
+            current_offset = ftell(strings_outfile)
+            if line_size > 1000000:
+                print line_size, current_uniq_offset
+                continue
             fwrite(&strings_tempfile[current_uniq_offset + sizeof(line_size)], line_size, 1, strings_outfile)
-
             outp_offsets[current_idx] = current_offset
-            current_offset += line_size
 
     finally:
         munmap(strings_tempfile, strings_temp_size)
@@ -192,7 +199,7 @@ class SSTable(object):
 
     def __init__(self, hashes_fname, strings_fname):
         self.hashes_file = np.memmap(hashes_fname, dtype=np.uint32)
-        self.hashes_length = self.hashes_file.shape[0] / 3
+        self.hashes_length = self.hashes_file.shape[0] / 2
         self.hashes = self.hashes_file[:self.hashes_length]
         self.offsets = self.hashes_file[self.hashes_length:]
         self.strings = open(strings_fname, 'r')
