@@ -9,5 +9,5 @@ if __name__ == '__main__':
             '%s.tmp' % idxname, idxname,
             '%s.tmp' % stringsname, stringsname)
 
-    os.unlink('%s.tmp' % idxname)
-    os.unlink('%s.tmp' % stringsname)
+    #os.unlink('%s.tmp' % idxname)
+    #os.unlink('%s.tmp' % stringsname)

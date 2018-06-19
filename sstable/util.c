@@ -144,6 +144,7 @@ void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname) {
     size_t buffer_size;
     char *current_line;
     ssize_t line_size;
+    uint32_t outp_line_size;
     uint32_t current_hash;
     uint32_t current_strings_offset;
     size_t heap_size;
@@ -166,13 +167,17 @@ void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname) {
     heap = malloc(CACHE_HEAP_SIZE * HEAP_ROW_SIZE);
     heap_size = 0;
 
+    size_t max_line_size = 0;
+
     while(1) {
         line_size = getline(&current_line, &buffer_size, inp_f);
         if (line_size < 0) break;
         if (line_size < 1) continue;
         line_size--; /* strip trailing newline */
 
-        current_hash = hash_bytes(current_line, line_size - 1);
+        current_hash = hash_bytes(current_line, line_size);
+
+        if (line_size > max_line_size) max_line_size = line_size;
 
         /* clip off the most frequent duplicates using a top-k heap
          * heap size is chosen to be small enough to fit in L2 cache
@@ -185,15 +190,17 @@ void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname) {
 
         if (heap_insert_res < 1) {
 
-            fwrite(&current_hash, sizeof(current_hash), 1, hashes_f);
-            fwrite(&current_strings_offset, sizeof(current_strings_offset), 1, hashes_f);
-            fwrite(&line_size, sizeof(line_size), 1, strings_f);
-            fwrite(current_line, line_size, 1, strings_f);
+            current_strings_offset = ftell(strings_f);
 
-            current_strings_offset += line_size;
-            current_strings_offset += sizeof(line_size);
+            if (fwrite(&current_hash, sizeof(current_hash), 1, hashes_f) < 1) break;
+            if (fwrite(&current_strings_offset, sizeof(current_strings_offset), 1, hashes_f) < 1) break;
+            
+            outp_line_size = line_size;
+            if (fwrite(&outp_line_size, sizeof(outp_line_size), 1, strings_f) < 1) break;
+            if (fwrite(current_line, line_size, 1, strings_f) < 1) break;
 
         }
+
     }
 
     fclose(hashes_f);

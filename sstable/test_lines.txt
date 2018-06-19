@@ -1,0 +1,1000 @@
+-it	"Un'app ha tentato di usare una versione non valida di Play Services."
+-it	"Un'applicazione richiede l'attivazione di Google Play Services."
+-it	"Un'applicazione richiede l'installazione di Google Play Services."
+-it	"Un'applicazione richiede un aggiornamento di Google Play Services."
+-it	Errore Google Play Services
+-it	Richiesta da %1$s
+-ro	Aplicația a încercat să utilizeze o vers. Servicii Google Play greșită
+-ro	O aplicație necesită activarea Serviciilor Google Play.
+-ro	O aplicație necesită instalarea Serviciilor Google Play.
+-ro	O aplicație necesită o actualizare pentru Servicii Google Play.
+-ro	Eroare Servicii Google Play
+-ro	Solicitată de %1$s
+-lv	Lietojumpr. mēģināja izmantot nederīgu Google Play pakalp. versiju.
+-lv	Lai lietojumprogramma darbotos, ir jāiespējo Google Play pakalpojumi.
+-lv	Lai lietojumprogramma darbotos, ir jāinstalē Google Play pakalpojumi.
+-lv	Lai lietojumprogramma darbotos, jāatjaunina Google Play pakalpojumi.
+-lv	Google Play pakalpojumu kļūda
+-lv	Pieprasījums no lietotnes %1$s
+-in	Aplikasi mencoba menggunakan versi Layanan Google Play yang rusak.
+-in	Aplikasi membutuhkan Layanan Google Play untuk dapat diaktifkan.
+-in	Aplikasi membutuhkan pemasangan Layanan Google Play.
+-in	Aplikasi membutuhkan pembaruan untuk Layanan Google Play.
+-in	Kesalahan layanan Google Play
+-in	Diminta oleh %1$s
+-lo-rLA	ແອັບພລິເຄຊັນໄດ້ພະຍາຍາມໃຊ້ Google Play Services ເວີຊັນທີ່ບໍ່ສາມາດໃຊ້ໄດ້.
+-lo-rLA	ແອັບພລິເຄຊັນຕ້ອງການເປີດນຳໃຊ້ Google Play Services.
+-lo-rLA	ແອັບພລິເຄຊັນຕ້ອງການໃຫ້ຕິດຕັ້ງ Google Play Services.
+-lo-rLA	ແອັບພລິເຄຊັນຕ້ອງການອັບເດດ Google Play Services.
+-lo-rLA	ບໍລິການ Google Play ຜິດພາດ
+-lo-rLA	ຮ້ອງຂໍໂດຍ %1$s
+-en-rGB	An application attempted to use a bad version of Google Play Services.
+-en-rGB	An application requires Google Play Services to be enabled.
+-en-rGB	An application requires installation of Google Play Services.
+-en-rGB	An application requires an update for Google Play Services.
+-en-rGB	Google Play services error
+-en-rGB	Requested by %1$s
+-hy-rAM	Հավելվածը փորձել է կիրառել Google Play ծառայությունների վատ տարբերակը:
+-hy-rAM	Հավելվածը պահանջում է միացնել Google Play ծառայությունները:
+-hy-rAM	Հավելվածը պահանջում է տեղադրել Google Play ծառայությունները:
+-hy-rAM	Հավելվածը պահանջում է թարմացնել Google Play ծառայությունները:
+-hy-rAM	Google Play ծառայությունների սխալ
+-hy-rAM	%1$s-ի հարցմամբ
+-be	Прыкладанне паспрабавала скарыстацца сапсаванай версіяй службаў Google Play.
+-be	Прыкладанне патрабуе ўключэння службаў Google Play.
+-be	Прыкладанне патрабуе ўсталявання службаў Google Play.
+-be	Прыкладанне патрабуе абнаўлення службаў Google Play.
+-be	Памылка службаў Google Play
+-be	Запытана прыкладаннем %1$s
+-nl	Onjuiste versie van Google Play-services wordt gebruikt.
+-nl	Google Play-services moet zijn ingeschakeld voor een applicatie.
+-nl	Google Play-services moet zijn geïnstalleerd voor een applicatie.
+-nl	Google Play-services moet worden geüpdatet voor een applicatie.
+-nl	Fout met Google Play-services
+-nl	Aangevraagd door %1$s
+-pl	Aplikacja próbowała skorzystać z nieprawidłowej wersji Usług Google Play.
+-pl	Aplikacja wymaga włączenia Usług Google Play.
+-pl	Aplikacja wymaga zainstalowania Usług Google Play.
+-pl	Aplikacja wymaga aktualizacji Usług Google Play.
+-pl	Błąd usług Google Play
+-pl	Żądanie z aplikacji %1$s
+-fr-rCA	Une application requiert une version valide des services Google Play
+-fr-rCA	"Une application requiert l'activation des services Google Play"
+-fr-rCA	"Une application requiert l'installation des services Google Play"
+-fr-rCA	Une application requiert la mise à jour des services Google Play
+-fr-rCA	Erreur liée aux services Google Play
+-fr-rCA	Demandée par %1$s
+-da	En applikation forsøgte at bruge en defekt version af Google Play.
+-da	En applikation kræver, at Google Play er aktiveret.
+-da	En applikation kræver, at Google Play er installeret.
+-da	En applikation kræver en opdatering af Google Play.
+-da	Fejl i Google Play-tjenester
+-da	Anmodning fra %1$s
+-zh-rTW	應用程式嘗試使用的 Google Play 服務版本有誤。
+-zh-rTW	應用程式需要啟用 Google Play 服務。
+-zh-rTW	應用程式需要安裝 Google Play 服務。
+-zh-rTW	應用程式需要更新 Google Play 服務。
+-zh-rTW	Google Play 服務錯誤
+-zh-rTW	提出要求的應用程式：%1$s
+-zh-rCN	某个应用尝试使用的 Google Play 服务版本有误。
+-zh-rCN	某个应用要求启用 Google Play 服务。
+-zh-rCN	某个应用要求安装 Google Play 服务。
+-zh-rCN	某个应用要求更新 Google Play 服务。
+-zh-rCN	Google Play 服务出错
+-zh-rCN	由“%1$s”发出
+-sk	Aplikácia sa pokúsila použiť nesprávnu verziu služieb Google Play.
+-sk	Aplikácia vyžaduje povolenie služieb Google Play.
+-sk	Aplikácia vyžaduje inštaláciu služieb Google Play.
+-sk	Aplikácia vyžaduje aktualizáciu služieb Google Play.
+-sk	Chyba služieb Google Play
+-sk	Vyžiadané aplikáciou %1$s
+-hr	Aplikacija je pokušala upotrijebiti lošu verziju Usluga za Google Play.
+-hr	Aplikacija zahtijeva omogućavanje Usluga za Google Play.
+-hr	Aplikacija zahtijeva instaliranje Usluga za Google Play.
+-hr	Aplikacija zahtijeva ažuriranje Usluga za Google Play.
+-hr	Pogreška usluga za Google Play
+-hr	Zahtijeva aplikacija %1$s
+-ja	アプリはGoogle Play開発者サービスの不適切なバージョンを使用しようとしました。
+-ja	アプリではGoogle Play開発者サービスを有効にする必要があります。
+-ja	アプリではGoogle Play開発者サービスをインストールする必要があります。
+-ja	アプリではGoogle Play開発者サービスをアップデートする必要があります。
+-ja	Google Play開発者サービスのエラー
+-ja	%1$sによるリクエスト
+-sv	En olämplig version av Google Play Tjänster anropades av en app.
+-sv	Google Play Tjänster måste aktiveras för en att app ska fungera.
+-sv	Google Play Tjänster måste installeras för att en app ska fungera.
+-sv	Google Play Tjänster måste uppdateras för en app ska fungera.
+-sv	Fel på Google Play Tjänster
+-sv	Begärdes av %1$s
+-et-rEE	Rakendus püüdis kasutada Google Play teenuste sobimatut versiooni.
+-et-rEE	Rakenduse kasutamiseks peavad olema lubatud Google Play teenused.
+-et-rEE	Rakenduse kasutamiseks peavad olema installitud Google Play teenused.
+-et-rEE	Rakenduse kasutamiseks tuleb värskendada Google Play teenuseid.
+-et-rEE	Viga Google Play teenustes
+-et-rEE	Päringu esitas: %1$s
+-ca	Una aplic. ha intentat utilitzar una versió errònia de serveis de Play.
+-ca	"Una aplicació requereix que s'activin els serveis de Google Play."
+-ca	"Una aplicació requereix que s'instal·lin els serveis de Google Play."
+-ca	"Una aplicació requereix que s'actualitzin els serveis de Google Play."
+-ca	Error dels serveis de Google Play
+-ca	Sol·licitada per %1$s
+-hi	ऐप्स ने Google Play सेवाओं के खराब संस्करण के उपयोग का प्रयास किया.
+-hi	"ऐप्स  के लिए Google Play सेवाओं को सक्षम किए जाने की आवश्यकता है."
+-hi	"ऐप्स  के लिए Google Play सेवाओं के इंस्टॉलेशन की आवश्यकता है."
+-hi	"ऐप्स  के लिए Google Play सेवाओं में Google Play से नई जानकारी की आवश्यकता है."
+-hi	Google Play सेवाएं त्रुटि
+-hi	%1$s द्वारा अनुरोधित
+-zh-rHK	應用程式嘗試使用錯誤版本的「Google Play 服務」。
+-zh-rHK	必須啟用「Google Play 服務」，才能使用應用程式。
+-zh-rHK	必須安裝「Google Play 服務」，才能使用應用程式。
+-zh-rHK	必須更新「Google Play 服務」，才能使用應用程式。
+-zh-rHK	Google Play 服務錯誤
+-zh-rHK	「%1$s」提出要求
+-tl	May app na sumubok ng maling bersyon ng Mga Serbisyo ng Google Play.
+-tl	Kailangan ng application na na-enable ang Mga Serbisyo ng Google Play.
+-tl	Kailangan ng application na ma-install ang Serbisyo ng Google Play.
+-tl	Kailangan ng application na i-update ang Mga Serbisyo ng Google Play.
+-tl	Error sa mga serbisyo ng Google Play
+-tl	Hiniling ng %1$s
+-es	Comprar con Google
+-es	Una aplicación intentó usar versión incorrecta de servicios de Google Play.
+-es	Una aplicación requiere que se habiliten los servicios de Play.
+-es	Una aplicación requiere que se instalen los servicios de Google Play.
+-es	Una aplicación requiere que se actualicen los servicios de Google Play.
+-es	Error de los servicios de Google Play
+-es	Solicitada por %1$s
+-sr	Апликација је покушала да користи лошу верзију Google Play услуга.
+-sr	Апликација захтева да Google Play услуге буду омогућене.
+-sr	Апликација захтева инсталирање Google Play услуга.
+-sr	Апликација захтева ажурирање Google Play услуга.
+-sr	Грешка Google Play услуга
+-sr	Захтева %1$s
+-lt	Programa bandė naudotis netinkama „Google Play“ paslaugų versija.
+-lt	Norint naudoti programą būtina įgalinti „Google Play“ paslaugas.
+-lt	Norint naudoti programą būtina įdiegti „Google Play“ paslaugas.
+-lt	Norint naudoti programą būtina atnaujinti „Google Play“ paslaugas.
+-lt	„Google Play“ paslaugų klaida
+-lt	Užklausą pateikė „%1$s“
+-fa	‏برنامه‌ای تلاش کرد از نسخه نادرستی از خدمات Google Play استفاده کند.
+-fa	‏برنامه‌ای به فعال کردن خدمات Google Play نیاز دارد.
+-fa	‏برنامه‌ای به نصب خدمات Google Play نیاز دارد.
+-fa	‏برنامه‌ای به به‌روزرسانی خدمات Google Play نیاز دارد.
+-fa	‏خطا در خدمات Google Play
+-fa	درخواست توسط %1$s
+-ko	애플리케이션에서 잘못된 버전의 Google Play 서비스를 사용하려고 했습니다.
+-ko	Google Play 서비스를 사용하도록 설정해야 하는 애플리케이션입니다.
+-ko	Google Play 서비스를 설치해야 하는 애플리케이션입니다.
+-ko	Google Play 서비스를 업데이트해야 하는 애플리케이션입니다.
+-ko	Google Play 서비스 오류
+-ko	%1$s에서 요청
+-hu	Egy alkalmazás a Play Szolgáltatások rossz verzióját akarta használni.
+-hu	Egy alkalmazás kéri a Google Play Szolgáltatások engedélyezését.
+-hu	Egy alkalmazás kéri a Google Play Szolgáltatások telepítését.
+-hu	Egy alkalmazás kéri a Google Play Szolgáltatások frissítését.
+-hu	Google Play szolgáltatási hiba
+-hu	Igénylő: %1$s
+-vi	Ứng dụng đã cố sử dụng phiên bản không đúng của Dịch vụ của Google Play.
+-vi	Ứng dụng yêu cầu Dịch vụ của Google Play phải được bật.
+-vi	Ứng dụng yêu cầu cài đặt Dịch vụ của Google Play.
+-vi	Ứng dụng yêu cầu cập nhật dành cho Dịch vụ Google Play.
+-vi	Lỗi dịch vụ của Google Play
+-vi	Được yêu cầu bởi %1$s
+-fi	Sovellus yritti käyttää virheellistä Google Play -palveluiden versiota
+-fi	Ota käyttöön Google Play -palvelut, jotta sovellus toimii.
+-fi	Asenna Google Play -palvelut, jotta sovellus toimii.
+-fi	Päivitä Google Play -palvelut, jotta sovellus toimii.
+-fi	Virhe Google Play -palveluissa
+-fi	Pyynnön teki %1$s
+-ar	‏يحاول أحد التطبيقات استخدام إصدار غير صالح من خدمات Google Play.
+-ar	‏يتطلب أحد التطبيقات تمكين خدمات Google Play.
+-ar	‏يتطلب أحد التطبيقات تثبيت خدمات Google Play.
+-ar	‏يتطلب أحد التطبيقات تحديث خدمات Google Play.
+-ar	‏خطأ في خدمات Google Play
+-ar	تم الطلب عن طريق %1$s
+-pt	Um aplicativo tentou usar uma versão errada do Google Play Services.
+-pt	Um aplicativo requer a ativação do Google Play Services.
+-pt	Um aplicativo requer a instalação do Google Play Services.
+-pt	Um aplicativo requer a atualização do Google Play Services.
+-pt	Ocorreu um erro no Google Play Services
+-pt	Solicitado por %1$s
+-iw	‏יש אפליקציה שניסתה להשתמש בגרסה שגויה של שירותי Google Play.
+-iw	‏יש אפליקציה המחייבת הפעלה של שירותי Google Play.
+-iw	‏יש אפליקציה המחייבת התקנה של שירותי Google Play.
+-iw	‏יש אפליקציה המחייבת עדכון של שירותי Google Play.
+-iw	‏שגיאה בשירותי Google Play
+-iw	התבקשה על ידי %1$s
+-zu	Uhlelo lokusebenza luzame ukusebenzisa inguqulo embi yamasevisi we-Google Play.
+-zu	Uhlelo lokusebenza ludinga amasevisi we-Google Play ukuze anikwe amandla.
+-zu	Uhlelo lokusebenza ludinga ukufakwa kwamasevisi we-Google Play.
+-zu	Uhlelo lokusebenza ludinga isibuyekezo samasevisi we-Google Play.
+-zu	Iphutha lamasevisi we-Google Play
+-zu	Kucelwe yi-%1$s
+-bg	Приложение опита да ползва неправилна версия на услуг. за Google Play.
+-bg	Приложение изисква активирането на услугите за Google Play.
+-bg	Приложение изисква инсталирането на услугите за Google Play.
+-bg	Приложение изисква актуализирането на услугите за Google Play.
+-bg	Грешка в услугите за Google Play
+-bg	Заявено от %1$s
+-fr	Une application requiert une version valide des services Google Play
+-fr	"Une application requiert l'activation des services Google Play"
+-fr	"Une application requiert l'installation des services Google Play"
+-fr	Une application requiert la mise à jour des services Google Play
+-fr	Erreur liée aux services Google Play
+-fr	Demandée par %1$s
+-cs	Aplikace se pokusila použít nesprávnou verzi Služeb Google Play.
+-cs	Aplikace vyžaduje aktivované Služby Google Play.
+-cs	Aplikace vyžaduje instalaci Služeb Google Play.
+-cs	Aplikace vyžaduje aktualizaci Služeb Google Play.
+-cs	Chyba služeb Google Play
+-cs	Požadováno aplikací %1$s
+-sw	Programu ilijaribu kutumia toleo baya la Huduma za Google Play.
+-sw	Programu inahitaji Huduma za Google Play ili kuwashwa.
+-sw	Programu inahitaji usakinishaji wa Huduma za Google Play.
+-sw	Programu inahitaji sasisho la Huduma za Google Play.
+-sw	Hitilafu kwenye Huduma za Google Play
+-sw	Imeombwa na %1$s
+-en-rIN	An application attempted to use a bad version of Google Play Services.
+-en-rIN	An application requires Google Play Services to be enabled.
+-en-rIN	An application requires installation of Google Play Services.
+-en-rIN	An application requires an update for Google Play Services.
+-en-rIN	Google Play services error
+-en-rIN	Requested by %1$s
+-el	Απόπειρα χρήσης ακατάλληλης έκδοσης Υπηρεσιών Google Play από εφαρμογή
+-el	Μια εφαρμογή απαιτεί τις Υπηρεσίες Google Play για ενεργοποίηση.
+-el	Μια εφαρμογή απαιτεί την εγκατάσταση των Υπηρεσιών Google Play.
+-el	Μια εφαρμογή απαιτεί μια ενημέρωση για τις Υπηρεσίες Google Play.
+-el	Σφάλμα υπηρεσιών Google Play
+-el	Υποβλήθηκε αίτημα από την εφαρμογή %1$s
+-ka-rGE	აპლიკაცია შეეცადა გამოეყენებინა Google Play სერვისების არასწორი ვერსია.
+-ka-rGE	აპლიკაცია საჭიროებს გააქტიურებულ Google Play Services.
+-ka-rGE	აპლიკაცია საჭიროებს Google Play Services-ის ინსტალაციას.
+-ka-rGE	აპლიკაცია საჭიროებს Google Play Services-ის განახლებას.
+-ka-rGE	Google Play სერვისების შეცდომა
+-ka-rGE	მომთხოვნი: %1$s
+-nb	En app prøvde å bruke en skadet versjon av Google Play Tjenester.
+-nb	En app krever Google Play Tjenester for å aktiveres.
+-nb	En app krever at Google Play Tjenester installeres.
+-nb	En app krever at Google Play Tjenester oppdateres.
+-nb	Google Play Tjenester-feil
+-nb	Forespurt av %1$s
+-de	App versuchte, defekte Google Play-Dienste-Version zu verwenden
+-de	App erfordert aktivierte Google Play-Dienste
+-de	App erfordert die Installation von Google Play-Diensten
+-de	App erfordert ein Update für Google Play-Dienste
+-de	Fehler bei Google Play-Diensten
+-de	Angefordert von %1$s
+-th	แอปพลิเคชันหนึ่งพยายามใช้เวอร์ชันที่ไม่เหมาะสมของบริการ Google Play
+-th	แอปพลิเคชันหนึ่งจำเป็นต้องมีบริการ Google Play เพื่อเปิดใช้งาน
+-th	แอปพลิเคชันหนึ่งจำเป็นต้องมีการติดตั้งบริการ Google Play
+-th	แอปพลิเคชันหนึ่งจำเป็นต้องมีการอัปเดตสำหรับบริการ Google Play
+-th	ข้อผิดพลาดของบริการ Google Play
+-th	ขอโดย %1$s
+-km-rKH	កម្មវិធី​​​ព្យាយាម​ប្រើ​កំណែ​មិនល្អ​របស់​សេវា​កម្ម​ឃ្លាំ​កម្មវិធី។
+-km-rKH	កម្មវិធី​ទាមទារ​​បើក​សេវាកម្ម​ឃ្លាំង​កម្មវិធី។
+-km-rKH	កម្មវិធី​ទាមទារ​ការ​ដំឡើង​សេវាកម្ម​ឃ្លាំង​កម្មវិធី។
+-km-rKH	កម្មវិធី​ទាមទារ​​ធ្វើ​បច្ចុប្បន្នភាព​សេវាកម្ម​ឃ្លាំង​កម្មវិធី។
+-km-rKH	កំហុស​សេវា​កម្ម​កម្សាន្ត Google
+-km-rKH	បាន​ស្នើ​ដោយ %1$s
+-ms-rMY	Aplikasi cuba menggunakan versi Perkhidmatan Google Play yang rosak.
+-ms-rMY	Perkhidmatan Google Play perlu didayakan untuk menggunakan aplikasi.
+-ms-rMY	Perkhidmatan Google Play perlu dipasang untuk mengguankan aplikasi.
+-ms-rMY	Perkhidmatan Google Play perlu dikemas kini untuk menggunakan aplikasi.
+-ms-rMY	Ralat perkhidmatan Google Play
+-ms-rMY	Diminta oleh %1$s
+-ru	Версия сервисов Google Play неисправна
+-ru	Для работы приложения требуется включить сервисы Google Play
+-ru	Для работы приложения требуется установить сервисы Google Play
+-ru	Для работы приложения требуется обновить сервисы Google Play
+-ru	Ошибка сервисов Google Play
+-ru	Запрос от приложения \"%1$s\"
+-mn-rMN	Аппликешн Google Play Үйлчилгээний муу хувилбарыг ашиглахыг оролдлоо.
+-mn-rMN	Аппликешн Google Play Үйлчилгээг идэвхжүүлсэн байхыг шаардана.
+-mn-rMN	Аппликешн Google Play Үйлчилгээг суулгахыг шаардана.
+-mn-rMN	Аппликешн Google Play Үйлчилгээг шинэчлэхийг шаардана.
+-mn-rMN	Google Play үйлчилгээний алдаа
+-mn-rMN	Хүсэлт гаргасан %1$s
+-am	መተግበሪያው የGoogle Play አገልግሎቶችን መጥፎ ስሪት ለመጠቀም ሞክሯል።
+-am	መተግበሪያው Google Play አገልግሎቶች እንዲነቁ ይፈልጋል።
+-am	መተግበሪያው Google Play አገልግሎቶች እንዲጫኑ ይፈልጋል።
+-am	መተግበሪያው Google Play አገልግሎቶች እንዲዘምን ይፈልጋል።
+-am	የGoogle Play አገልግሎቶች ስህተት
+-am	በ%1$s የተጠየቀ
+-tr	"Bir uygulama, Google Play Hizmetleri'nin bozuk bir sürümünü kullanmayı denedi."
+-tr	"Bir uygulama, Google Play Hizmetleri'nin etkin olmasını gerektiriyor."
+-tr	"Bir uygulama, Google Play Hizmetleri'nin yüklenmesini gerektiriyor."
+-tr	Bir uygulama, Google Play Hizmetleri için bir güncelleme gerektiriyor.
+-tr	Google Play hizmetleri hatası
+-tr	İstekte bulunan: %1$s
+-pt-rPT	Aplicação tentou utiliz. versão incorreta dos Serviços do Google Play.
+-pt-rPT	Uma aplicação necessita da ativação dos Serviços do Google Play.
+-pt-rPT	Uma aplicação necessita da instalação dos Serviços do Google Play.
+-pt-rPT	Uma aplicação necessita da atualização dos Serviços do Google Play.
+-pt-rPT	Erro dos serviços do Google Play
+-pt-rPT	Solicitado por %1$s
+-es-rUS	Una aplic. intentó usar una versión no válida de Google Play Services
+-es-rUS	Una aplicación requiere que se active Google Play Services
+-es-rUS	Una aplicación requiere que se instale Google Play Services
+-es-rUS	Una aplicación requiere que se actualice Google Play Services
+-es-rUS	Error de Google Play Services
+-es-rUS	Solicitada por %1$s
+	Buy with Google
+	Call Recorder Free
+	Call Recorder is working!
+	All your further calls will be saved.
+	Turn ON recording!
+	Currently recorder is turned off.
+	Info
+	About Us
+	About Company
+	Notification
+	display notification after recording call
+	Enable Call notifications
+	Storage
+	Delete all the recorded calls automatically
+	Automatic Data Cleaning
+	Supported File Formats
+	Select File Format for recording
+	My Recording
+	Play
+	Email to friend
+	Edit Name
+	Select option
+	Delete
+	Edit
+	Cancel
+	Done
+	"If you enjoy using %s, would you mind taking a moment to rate it? It won't take more than a minute. Thanks for your support!"
+	Rate %s
+	No, Thanks
+	Rate %s
+	Remind me later
+	Check out your Call Recordings and manage them here!
+	Your phone call is being processed
+	Add to favorite
+	Remove from favorite
+	All
+	Favorite
+	Incoming
+	Outgoing
+-af	"'n Program het probeer om 'n slegte weergawe van Google Play-dienste te gebruik."
+-af	"'n Program vereis dat Google Play-dienste geaktiveer word."
+-af	"'n Program vereis dat Google Play-dienste geïnstalleer word."
+-af	"'n Program vereis 'n opdatering vir Google Play-dienste."
+-af	Google Play-dienstefout
+-af	Versoek deur %1$s
+-sl	Aplikacija je poskusila uporabiti napačno različico Storitev Google Play.
+-sl	Za delovanje aplikacije morate omogočiti Storitve Google Play.
+-sl	Za delovanje aplikacije morate namestiti Storitve Google Play.
+-sl	Za delovanje aplikacije morate posodobiti Storitve Google Play.
+-sl	Napaka storitev Google Play
+-sl	Zahtevala aplikacija %1$s
+-pt-rBR	Um aplicativo tentou usar uma versão errada do Google Play Services.
+-pt-rBR	Um aplicativo requer a ativação do Google Play Services.
+-pt-rBR	Um aplicativo requer a instalação do Google Play Services.
+-pt-rBR	Um aplicativo requer a atualização do Google Play Services.
+-pt-rBR	Ocorreu um erro no Google Play Services
+-pt-rBR	Solicitado por %1$s
+-uk	Програма спробувала застосувати хибну версію Сервісів Google Play.
+-uk	Щоб програма працювала, потрібно ввімкнути Сервіси Google Play.
+-uk	Щоб програма працювала, потрібно встановити Сервіси Google Play.
+-uk	Щоб програма працювала, потрібно оновити Сервіси Google Play.
+-uk	Помилка Сервісів Google Play
+-uk	Запит від програми %1$s
+-zh-rTW	應用程式嘗試使用的 Google Play 服務版本有誤。
+-zh-rTW	應用程式需要啟用 Google Play 服務。
+-zh-rTW	應用程式需要安裝 Google Play 服務。
+-zh-rTW	應用程式需要更新 Google Play 服務。
+-zh-rTW	Google Play 服務錯誤
+-zh-rTW	提出要求的應用程式：%1$s
+-el	Απόπειρα χρήσης ακατάλληλης έκδοσης Υπηρεσιών Google Play από εφαρμογή
+-el	Μια εφαρμογή απαιτεί τις Υπηρεσίες Google Play για ενεργοποίηση.
+-el	Μια εφαρμογή απαιτεί την εγκατάσταση των Υπηρεσιών Google Play.
+-el	Μια εφαρμογή απαιτεί μια ενημέρωση για τις Υπηρεσίες Google Play.
+-el	Σφάλμα υπηρεσιών Google Play
+-el	Υποβλήθηκε αίτημα από την εφαρμογή %1$s
+-ja	アプリはGoogle Play開発者サービスの不適切なバージョンを使用しようとしました。
+-ja	アプリではGoogle Play開発者サービスを有効にする必要があります。
+-ja	アプリではGoogle Play開発者サービスをインストールする必要があります。
+-ja	アプリではGoogle Play開発者サービスをアップデートする必要があります。
+-ja	Google Play開発者サービスのエラー
+-ja	%1$sによるリクエスト
+-nl	Onjuiste versie van Google Play-services wordt gebruikt.
+-nl	Google Play-services moet zijn ingeschakeld voor een applicatie.
+-nl	Google Play-services moet zijn geïnstalleerd voor een applicatie.
+-nl	Google Play-services moet worden geüpdatet voor een applicatie.
+-nl	Fout met Google Play-services
+-nl	Aangevraagd door %1$s
+-sw	Programu ilijaribu kutumia toleo baya la Huduma za Google Play.
+-sw	Programu inahitaji Huduma za Google Play ili kuwashwa.
+-sw	Programu inahitaji usakinishaji wa Huduma za Google Play.
+-sw	Programu inahitaji sasisho la Huduma za Google Play.
+-sw	Hitilafu kwenye Huduma za Google Play
+-sw	Imeombwa na %1$s
+-en-rIN	An application attempted to use a bad version of Google Play Services.
+-en-rIN	An application requires Google Play Services to be enabled.
+-en-rIN	An application requires installation of Google Play Services.
+-en-rIN	An application requires an update for Google Play Services.
+-en-rIN	Google Play services error
+-en-rIN	Requested by %1$s
+-bg	Приложение опита да ползва неправилна версия на услуг. за Google Play.
+-bg	Приложение изисква активирането на услугите за Google Play.
+-bg	Приложение изисква инсталирането на услугите за Google Play.
+-bg	Приложение изисква актуализирането на услугите за Google Play.
+-bg	Грешка в услугите за Google Play
+-bg	Заявено от %1$s
+-iw	‏יש אפליקציה שניסתה להשתמש בגרסה שגויה של שירותי Google Play.
+-iw	‏יש אפליקציה המחייבת הפעלה של שירותי Google Play.
+-iw	‏יש אפליקציה המחייבת התקנה של שירותי Google Play.
+-iw	‏יש אפליקציה המחייבת עדכון של שירותי Google Play.
+-iw	‏שגיאה בשירותי Google Play
+-iw	התבקשה על ידי %1$s
+-lt	Programa bandė naudotis netinkama „Google Play“ paslaugų versija.
+-lt	Norint naudoti programą būtina įgalinti „Google Play“ paslaugas.
+-lt	Norint naudoti programą būtina įdiegti „Google Play“ paslaugas.
+-lt	Norint naudoti programą būtina atnaujinti „Google Play“ paslaugas.
+-lt	„Google Play“ paslaugų klaida
+-lt	Užklausą pateikė „%1$s“
+-lo-rLA	ແອັບພລິເຄຊັນໄດ້ພະຍາຍາມໃຊ້ Google Play Services ເວີຊັນທີ່ບໍ່ສາມາດໃຊ້ໄດ້.
+-lo-rLA	ແອັບພລິເຄຊັນຕ້ອງການເປີດນຳໃຊ້ Google Play Services.
+-lo-rLA	ແອັບພລິເຄຊັນຕ້ອງການໃຫ້ຕິດຕັ້ງ Google Play Services.
+-lo-rLA	ແອັບພລິເຄຊັນຕ້ອງການອັບເດດ Google Play Services.
+-lo-rLA	ບໍລິການ Google Play ຜິດພາດ
+-lo-rLA	ຮ້ອງຂໍໂດຍ %1$s
+-uk	Програма спробувала застосувати хибну версію Сервісів Google Play.
+-uk	Щоб програма працювала, потрібно ввімкнути Сервіси Google Play.
+-uk	Щоб програма працювала, потрібно встановити Сервіси Google Play.
+-uk	Щоб програма працювала, потрібно оновити Сервіси Google Play.
+-uk	Помилка Сервісів Google Play
+-uk	Запит від програми %1$s
+-fa	‏برنامه‌ای تلاش کرد از نسخه نادرستی از خدمات Google Play استفاده کند.
+-fa	‏برنامه‌ای به فعال کردن خدمات Google Play نیاز دارد.
+-fa	‏برنامه‌ای به نصب خدمات Google Play نیاز دارد.
+-fa	‏برنامه‌ای به به‌روزرسانی خدمات Google Play نیاز دارد.
+-fa	‏خطا در خدمات Google Play
+-fa	درخواست توسط %1$s
+-sv	En olämplig version av Google Play Tjänster anropades av en app.
+-sv	Google Play Tjänster måste aktiveras för en att app ska fungera.
+-sv	Google Play Tjänster måste installeras för att en app ska fungera.
+-sv	Google Play Tjänster måste uppdateras för en app ska fungera.
+-sv	Fel på Google Play Tjänster
+-sv	Begärdes av %1$s
+-lv	Lietojumpr. mēģināja izmantot nederīgu Google Play pakalp. versiju.
+-lv	Lai lietojumprogramma darbotos, ir jāiespējo Google Play pakalpojumi.
+-lv	Lai lietojumprogramma darbotos, ir jāinstalē Google Play pakalpojumi.
+-lv	Lai lietojumprogramma darbotos, jāatjaunina Google Play pakalpojumi.
+-lv	Google Play pakalpojumu kļūda
+-lv	Pieprasījums no lietotnes %1$s
+-fr	Une application requiert une version valide des services Google Play
+-fr	"Une application requiert l'activation des services Google Play"
+-fr	"Une application requiert l'installation des services Google Play"
+-fr	Une application requiert la mise à jour des services Google Play
+-fr	Erreur liée aux services Google Play
+-fr	Demandée par %1$s
+-af	"'n Program het probeer om 'n slegte weergawe van Google Play-dienste te gebruik."
+-af	"'n Program vereis dat Google Play-dienste geaktiveer word."
+-af	"'n Program vereis dat Google Play-dienste geïnstalleer word."
+-af	"'n Program vereis 'n opdatering vir Google Play-dienste."
+-af	Google Play-dienstefout
+-af	Versoek deur %1$s
+-zu	Uhlelo lokusebenza luzame ukusebenzisa inguqulo embi yamasevisi we-Google Play.
+-zu	Uhlelo lokusebenza ludinga amasevisi we-Google Play ukuze anikwe amandla.
+-zu	Uhlelo lokusebenza ludinga ukufakwa kwamasevisi we-Google Play.
+-zu	Uhlelo lokusebenza ludinga isibuyekezo samasevisi we-Google Play.
+-zu	Iphutha lamasevisi we-Google Play
+-zu	Kucelwe yi-%1$s
+-pt-rBR	Um aplicativo tentou usar uma versão errada do Google Play Services.
+-pt-rBR	Um aplicativo requer a ativação do Google Play Services.
+-pt-rBR	Um aplicativo requer a instalação do Google Play Services.
+-pt-rBR	Um aplicativo requer a atualização do Google Play Services.
+-pt-rBR	Ocorreu um erro no Google Play Services
+-pt-rBR	Solicitado por %1$s
+-sl	Aplikacija je poskusila uporabiti napačno različico Storitev Google Play.
+-sl	Za delovanje aplikacije morate omogočiti Storitve Google Play.
+-sl	Za delovanje aplikacije morate namestiti Storitve Google Play.
+-sl	Za delovanje aplikacije morate posodobiti Storitve Google Play.
+-sl	Napaka storitev Google Play
+-sl	Zahtevala aplikacija %1$s
+-es-rUS	Una aplic. intentó usar una versión no válida de Google Play Services
+-es-rUS	Una aplicación requiere que se active Google Play Services
+-es-rUS	Una aplicación requiere que se instale Google Play Services
+-es-rUS	Una aplicación requiere que se actualice Google Play Services
+-es-rUS	Error de Google Play Services
+-es-rUS	Solicitada por %1$s
+-sk	Aplikácia sa pokúsila použiť nesprávnu verziu služieb Google Play.
+-sk	Aplikácia vyžaduje povolenie služieb Google Play.
+-sk	Aplikácia vyžaduje inštaláciu služieb Google Play.
+-sk	Aplikácia vyžaduje aktualizáciu služieb Google Play.
+-sk	Chyba služieb Google Play
+-sk	Vyžiadané aplikáciou %1$s
+-tr	"Bir uygulama, Google Play Hizmetleri'nin bozuk bir sürümünü kullanmayı denedi."
+-tr	"Bir uygulama, Google Play Hizmetleri'nin etkin olmasını gerektiriyor."
+-tr	"Bir uygulama, Google Play Hizmetleri'nin yüklenmesini gerektiriyor."
+-tr	Bir uygulama, Google Play Hizmetleri için bir güncelleme gerektiriyor.
+-tr	Google Play hizmetleri hatası
+-tr	İstekte bulunan: %1$s
+-it	"Un'app ha tentato di usare una versione non valida di Play Services."
+-it	"Un'applicazione richiede l'attivazione di Google Play Services."
+-it	"Un'applicazione richiede l'installazione di Google Play Services."
+-it	"Un'applicazione richiede un aggiornamento di Google Play Services."
+-it	Errore Google Play Services
+-it	Richiesta da %1$s
+-ms-rMY	Aplikasi cuba menggunakan versi Perkhidmatan Google Play yang rosak.
+-ms-rMY	Perkhidmatan Google Play perlu didayakan untuk menggunakan aplikasi.
+-ms-rMY	Perkhidmatan Google Play perlu dipasang untuk mengguankan aplikasi.
+-ms-rMY	Perkhidmatan Google Play perlu dikemas kini untuk menggunakan aplikasi.
+-ms-rMY	Ralat perkhidmatan Google Play
+-ms-rMY	Diminta oleh %1$s
+-th	แอปพลิเคชันหนึ่งพยายามใช้เวอร์ชันที่ไม่เหมาะสมของบริการ Google Play
+-th	แอปพลิเคชันหนึ่งจำเป็นต้องมีบริการ Google Play เพื่อเปิดใช้งาน
+-th	แอปพลิเคชันหนึ่งจำเป็นต้องมีการติดตั้งบริการ Google Play
+-th	แอปพลิเคชันหนึ่งจำเป็นต้องมีการอัปเดตสำหรับบริการ Google Play
+-th	ข้อผิดพลาดของบริการ Google Play
+-th	ขอโดย %1$s
+-ko	애플리케이션에서 잘못된 버전의 Google Play 서비스를 사용하려고 했습니다.
+-ko	Google Play 서비스를 사용하도록 설정해야 하는 애플리케이션입니다.
+-ko	Google Play 서비스를 설치해야 하는 애플리케이션입니다.
+-ko	Google Play 서비스를 업데이트해야 하는 애플리케이션입니다.
+-ko	Google Play 서비스 오류
+-ko	%1$s에서 요청
+-es	Comprar con Google
+-es	Una aplicación intentó usar versión incorrecta de servicios de Google Play.
+-es	Una aplicación requiere que se habiliten los servicios de Play.
+-es	Una aplicación requiere que se instalen los servicios de Google Play.
+-es	Una aplicación requiere que se actualicen los servicios de Google Play.
+-es	Error de los servicios de Google Play
+-es	Solicitada por %1$s
+-fr-rCA	Une application requiert une version valide des services Google Play
+-fr-rCA	"Une application requiert l'activation des services Google Play"
+-fr-rCA	"Une application requiert l'installation des services Google Play"
+-fr-rCA	Une application requiert la mise à jour des services Google Play
+-fr-rCA	Erreur liée aux services Google Play
+-fr-rCA	Demandée par %1$s
+-ar	‏يحاول أحد التطبيقات استخدام إصدار غير صالح من خدمات Google Play.
+-ar	‏يتطلب أحد التطبيقات تمكين خدمات Google Play.
+-ar	‏يتطلب أحد التطبيقات تثبيت خدمات Google Play.
+-ar	‏يتطلب أحد التطبيقات تحديث خدمات Google Play.
+-ar	‏خطأ في خدمات Google Play
+-ar	تم الطلب عن طريق %1$s
+-hu	Egy alkalmazás a Play Szolgáltatások rossz verzióját akarta használni.
+-hu	Egy alkalmazás kéri a Google Play Szolgáltatások engedélyezését.
+-hu	Egy alkalmazás kéri a Google Play Szolgáltatások telepítését.
+-hu	Egy alkalmazás kéri a Google Play Szolgáltatások frissítését.
+-hu	Google Play szolgáltatási hiba
+-hu	Igénylő: %1$s
+-ru	Версия сервисов Google Play неисправна
+-ru	Для работы приложения требуется включить сервисы Google Play
+-ru	Для работы приложения требуется установить сервисы Google Play
+-ru	Для работы приложения требуется обновить сервисы Google Play
+-ru	Ошибка сервисов Google Play
+-ru	Запрос от приложения \"%1$s\"
+-ka-rGE	აპლიკაცია შეეცადა გამოეყენებინა Google Play სერვისების არასწორი ვერსია.
+-ka-rGE	აპლიკაცია საჭიროებს გააქტიურებულ Google Play Services.
+-ka-rGE	აპლიკაცია საჭიროებს Google Play Services-ის ინსტალაციას.
+-ka-rGE	აპლიკაცია საჭიროებს Google Play Services-ის განახლებას.
+-ka-rGE	Google Play სერვისების შეცდომა
+-ka-rGE	მომთხოვნი: %1$s
+-pt-rPT	Aplicação tentou utiliz. versão incorreta dos Serviços do Google Play.
+-pt-rPT	Uma aplicação necessita da ativação dos Serviços do Google Play.
+-pt-rPT	Uma aplicação necessita da instalação dos Serviços do Google Play.
+-pt-rPT	Uma aplicação necessita da atualização dos Serviços do Google Play.
+-pt-rPT	Erro dos serviços do Google Play
+-pt-rPT	Solicitado por %1$s
+-pt	Um aplicativo tentou usar uma versão errada do Google Play Services.
+-pt	Um aplicativo requer a ativação do Google Play Services.
+-pt	Um aplicativo requer a instalação do Google Play Services.
+-pt	Um aplicativo requer a atualização do Google Play Services.
+-pt	Ocorreu um erro no Google Play Services
+-pt	Solicitado por %1$s
+-vi	Ứng dụng đã cố sử dụng phiên bản không đúng của Dịch vụ của Google Play.
+-vi	Ứng dụng yêu cầu Dịch vụ của Google Play phải được bật.
+-vi	Ứng dụng yêu cầu cài đặt Dịch vụ của Google Play.
+-vi	Ứng dụng yêu cầu cập nhật dành cho Dịch vụ Google Play.
+-vi	Lỗi dịch vụ của Google Play
+-vi	Được yêu cầu bởi %1$s
+-tl	May app na sumubok ng maling bersyon ng Mga Serbisyo ng Google Play.
+-tl	Kailangan ng application na na-enable ang Mga Serbisyo ng Google Play.
+-tl	Kailangan ng application na ma-install ang Serbisyo ng Google Play.
+-tl	Kailangan ng application na i-update ang Mga Serbisyo ng Google Play.
+-tl	Error sa mga serbisyo ng Google Play
+-tl	Hiniling ng %1$s
+-ro	Aplicația a încercat să utilizeze o vers. Servicii Google Play greșită
+-ro	O aplicație necesită activarea Serviciilor Google Play.
+-ro	O aplicație necesită instalarea Serviciilor Google Play.
+-ro	O aplicație necesită o actualizare pentru Servicii Google Play.
+-ro	Eroare Servicii Google Play
+-ro	Solicitată de %1$s
+-am	መተግበሪያው የGoogle Play አገልግሎቶችን መጥፎ ስሪት ለመጠቀም ሞክሯል።
+-am	መተግበሪያው Google Play አገልግሎቶች እንዲነቁ ይፈልጋል።
+-am	መተግበሪያው Google Play አገልግሎቶች እንዲጫኑ ይፈልጋል።
+-am	መተግበሪያው Google Play አገልግሎቶች እንዲዘምን ይፈልጋል።
+-am	የGoogle Play አገልግሎቶች ስህተት
+-am	በ%1$s የተጠየቀ
+-et-rEE	Rakendus püüdis kasutada Google Play teenuste sobimatut versiooni.
+-et-rEE	Rakenduse kasutamiseks peavad olema lubatud Google Play teenused.
+-et-rEE	Rakenduse kasutamiseks peavad olema installitud Google Play teenused.
+-et-rEE	Rakenduse kasutamiseks tuleb värskendada Google Play teenuseid.
+-et-rEE	Viga Google Play teenustes
+-et-rEE	Päringu esitas: %1$s
+-hy-rAM	Հավելվածը փորձել է կիրառել Google Play ծառայությունների վատ տարբերակը:
+-hy-rAM	Հավելվածը պահանջում է միացնել Google Play ծառայությունները:
+-hy-rAM	Հավելվածը պահանջում է տեղադրել Google Play ծառայությունները:
+-hy-rAM	Հավելվածը պահանջում է թարմացնել Google Play ծառայությունները:
+-hy-rAM	Google Play ծառայությունների սխալ
+-hy-rAM	%1$s-ի հարցմամբ
+-ca	Una aplic. ha intentat utilitzar una versió errònia de serveis de Play.
+-ca	"Una aplicació requereix que s'activin els serveis de Google Play."
+-ca	"Una aplicació requereix que s'instal·lin els serveis de Google Play."
+-ca	"Una aplicació requereix que s'actualitzin els serveis de Google Play."
+-ca	Error dels serveis de Google Play
+-ca	Sol·licitada per %1$s
+-en-rGB	An application attempted to use a bad version of Google Play Services.
+-en-rGB	An application requires Google Play Services to be enabled.
+-en-rGB	An application requires installation of Google Play Services.
+-en-rGB	An application requires an update for Google Play Services.
+-en-rGB	Google Play services error
+-en-rGB	Requested by %1$s
+-mn-rMN	Аппликешн Google Play Үйлчилгээний муу хувилбарыг ашиглахыг оролдлоо.
+-mn-rMN	Аппликешн Google Play Үйлчилгээг идэвхжүүлсэн байхыг шаардана.
+-mn-rMN	Аппликешн Google Play Үйлчилгээг суулгахыг шаардана.
+-mn-rMN	Аппликешн Google Play Үйлчилгээг шинэчлэхийг шаардана.
+-mn-rMN	Google Play үйлчилгээний алдаа
+-mn-rMN	Хүсэлт гаргасан %1$s
+-zh-rCN	某个应用尝试使用的 Google Play 服务版本有误。
+-zh-rCN	某个应用要求启用 Google Play 服务。
+-zh-rCN	某个应用要求安装 Google Play 服务。
+-zh-rCN	某个应用要求更新 Google Play 服务。
+-zh-rCN	Google Play 服务出错
+-zh-rCN	由“%1$s”发出
+-hi	ऐप्स ने Google Play सेवाओं के खराब संस्करण के उपयोग का प्रयास किया.
+-hi	"ऐप्स  के लिए Google Play सेवाओं को सक्षम किए जाने की आवश्यकता है."
+-hi	"ऐप्स  के लिए Google Play सेवाओं के इंस्टॉलेशन की आवश्यकता है."
+-hi	"ऐप्स  के लिए Google Play सेवाओं में Google Play से नई जानकारी की आवश्यकता है."
+-hi	Google Play सेवाएं त्रुटि
+-hi	%1$s द्वारा अनुरोधित
+-in	Aplikasi mencoba menggunakan versi Layanan Google Play yang rusak.
+-in	Aplikasi membutuhkan Layanan Google Play untuk dapat diaktifkan.
+-in	Aplikasi membutuhkan pemasangan Layanan Google Play.
+-in	Aplikasi membutuhkan pembaruan untuk Layanan Google Play.
+-in	Kesalahan layanan Google Play
+-in	Diminta oleh %1$s
+-fi	Sovellus yritti käyttää virheellistä Google Play -palveluiden versiota
+-fi	Ota käyttöön Google Play -palvelut, jotta sovellus toimii.
+-fi	Asenna Google Play -palvelut, jotta sovellus toimii.
+-fi	Päivitä Google Play -palvelut, jotta sovellus toimii.
+-fi	Virhe Google Play -palveluissa
+-fi	Pyynnön teki %1$s
+-hr	Aplikacija je pokušala upotrijebiti lošu verziju Usluga za Google Play.
+-hr	Aplikacija zahtijeva omogućavanje Usluga za Google Play.
+-hr	Aplikacija zahtijeva instaliranje Usluga za Google Play.
+-hr	Aplikacija zahtijeva ažuriranje Usluga za Google Play.
+-hr	Pogreška usluga za Google Play
+-hr	Zahtijeva aplikacija %1$s
+-sr	Апликација је покушала да користи лошу верзију Google Play услуга.
+-sr	Апликација захтева да Google Play услуге буду омогућене.
+-sr	Апликација захтева инсталирање Google Play услуга.
+-sr	Апликација захтева ажурирање Google Play услуга.
+-sr	Грешка Google Play услуга
+-sr	Захтева %1$s
+-be	Прыкладанне паспрабавала скарыстацца сапсаванай версіяй службаў Google Play.
+-be	Прыкладанне патрабуе ўключэння службаў Google Play.
+-be	Прыкладанне патрабуе ўсталявання службаў Google Play.
+-be	Прыкладанне патрабуе абнаўлення службаў Google Play.
+-be	Памылка службаў Google Play
+-be	Запытана прыкладаннем %1$s
+-pl	Aplikacja próbowała skorzystać z nieprawidłowej wersji Usług Google Play.
+-pl	Aplikacja wymaga włączenia Usług Google Play.
+-pl	Aplikacja wymaga zainstalowania Usług Google Play.
+-pl	Aplikacja wymaga aktualizacji Usług Google Play.
+-pl	Błąd usług Google Play
+-pl	Żądanie z aplikacji %1$s
+-nb	En app prøvde å bruke en skadet versjon av Google Play Tjenester.
+-nb	En app krever Google Play Tjenester for å aktiveres.
+-nb	En app krever at Google Play Tjenester installeres.
+-nb	En app krever at Google Play Tjenester oppdateres.
+-nb	Google Play Tjenester-feil
+-nb	Forespurt av %1$s
+-zh-rHK	應用程式嘗試使用錯誤版本的「Google Play 服務」。
+-zh-rHK	必須啟用「Google Play 服務」，才能使用應用程式。
+-zh-rHK	必須安裝「Google Play 服務」，才能使用應用程式。
+-zh-rHK	必須更新「Google Play 服務」，才能使用應用程式。
+-zh-rHK	Google Play 服務錯誤
+-zh-rHK	「%1$s」提出要求
+	Buy with Google
+	Call Recorder Free
+	Call Recorder is working!
+	All your further calls will be saved.
+	Turn ON recording!
+	Currently recorder is turned off.
+	Info
+	About Us
+	About Company
+	Notification
+	display notification after recording call
+	Enable Call notifications
+	Storage
+	Delete all the recorded calls automatically
+	Automatic Data Cleaning
+	Supported File Formats
+	Select File Format for recording
+	My Recording
+	Play
+	Email to friend
+	Edit Name
+	Select option
+	Delete
+	Edit
+	Cancel
+	Done
+	"If you enjoy using %s, would you mind taking a moment to rate it? It won't take more than a minute. Thanks for your support!"
+	Rate %s
+	No, Thanks
+	Rate %s
+	Remind me later
+	Check out your Call Recordings and manage them here!
+	Your phone call is being processed
+	Add to favorite
+	Remove from favorite
+	All
+	Favorite
+	Incoming
+	Outgoing
+-da	En applikation forsøgte at bruge en defekt version af Google Play.
+-da	En applikation kræver, at Google Play er aktiveret.
+-da	En applikation kræver, at Google Play er installeret.
+-da	En applikation kræver en opdatering af Google Play.
+-da	Fejl i Google Play-tjenester
+-da	Anmodning fra %1$s
+-cs	Aplikace se pokusila použít nesprávnou verzi Služeb Google Play.
+-cs	Aplikace vyžaduje aktivované Služby Google Play.
+-cs	Aplikace vyžaduje instalaci Služeb Google Play.
+-cs	Aplikace vyžaduje aktualizaci Služeb Google Play.
+-cs	Chyba služeb Google Play
+-cs	Požadováno aplikací %1$s
+-km-rKH	កម្មវិធី​​​ព្យាយាម​ប្រើ​កំណែ​មិនល្អ​របស់​សេវា​កម្ម​ឃ្លាំ​កម្មវិធី។
+-km-rKH	កម្មវិធី​ទាមទារ​​បើក​សេវាកម្ម​ឃ្លាំង​កម្មវិធី។
+-km-rKH	កម្មវិធី​ទាមទារ​ការ​ដំឡើង​សេវាកម្ម​ឃ្លាំង​កម្មវិធី។
+-km-rKH	កម្មវិធី​ទាមទារ​​ធ្វើ​បច្ចុប្បន្នភាព​សេវាកម្ម​ឃ្លាំង​កម្មវិធី។
+-km-rKH	កំហុស​សេវា​កម្ម​កម្សាន្ត Google
+-km-rKH	បាន​ស្នើ​ដោយ %1$s
+-de	App versuchte, defekte Google Play-Dienste-Version zu verwenden
+-de	App erfordert aktivierte Google Play-Dienste
+-de	App erfordert die Installation von Google Play-Diensten
+-de	App erfordert ein Update für Google Play-Dienste
+-de	Fehler bei Google Play-Diensten
+-de	Angefordert von %1$s
+-bs-rBA	>999
+-ca	Accepta
+-ca	"Vols permetre que l'anunci creï un esdeveniment de calendari?"
+-ca	Crea un esdeveniment de calendari
+-ca	Rebutja
+-ca	+999
+-ca	"Vols permetre que l'anunci desi imatges a la galeria d'imatges?"
+-ca	Desa la imatge
+-sr	Прихвати
+-sr	Желите ли да дозволите AdMob-у да направи догађај у календару?
+-sr	Прављење догађаја у календару
+-sr	Одбиј
+-sr	>999
+-sr	Желите ли да дозволите AdMob-у да сачува слику у Галерији слика?
+-sr	Чување слике
+-lo	ຍອມຮັບ
+-lo	ອະນຸຍາດໃຫ້ໂຄສະນາສ້າງນັດໝາຍປະຕິທິນໄດ້ບໍ?
+-lo	ສ້າງນັດໝາຍອື່ນ
+-lo	ປະຕິເສດ
+-lo	ອະນຸຍາດໃຫ້ໂຄສະນາບັນທຶກຮູບພາບໃສ່ຫ້ອງສະໝຸດພາບໄດ້ບໍ່?
+-lo	ບັນທຶກຮູບພາບ
+-fr-rCA	Accepter
+-fr-rCA	"Autoriser l'annonce à créer un événement dans l'agenda?"
+-fr-rCA	"Créer un événement dans l'agenda"
+-fr-rCA	Refuser
+-fr-rCA	>999
+-fr-rCA	"Autoriser l'annonce à stocker l'image dans la galerie d'image?"
+-fr-rCA	"Enregistrer l'image"
+-it	Accetto
+-it	Consentire a AdMob di creare un evento di calendario?
+-it	Crea evento di calendario
+-it	Rifiuto
+-it	999+
+-it	"Consentire a AdMob di memorizzare l'immagine nella galleria Immagini?"
+-it	Salva immagine
+-pa	ਸਵੀਕਾਰ ਕਰੋ
+-pa	ਕੀ ਇਸ਼ਤਿਹਾਰ ਨੂੰ ਇੱਕ ਕੈਲੰਡਰ ਵਰਤਾਰਾ ਬਣਾਉਣ ਦੀ ਮਨਜ਼ੂਰੀ ਦੇਣੀ ਹੈ?
+-pa	ਕੈਲੰਡਰ ਵਰਤਾਰਾ ਬਣਾਓ
+-pa	ਅਸਵੀਕਾਰ ਕਰੋ
+-pa	ਕੀ ਇਸ਼ਤਿਹਾਰ ਨੂੰ ਤਸਵੀਰ ਗੈਲਰੀ ਵਿੱਚ ਚਿਤਰ ਸਟੋਰ ਕਰਨ ਦੀ ਆਗਿਆ ਦੇਣੀ ਹੈ?
+-pa	ਚਿਤਰ ਰੱਖਿਅਤ ਕਰੋ
+-kn	ಸ್ವೀಕರಿಸು
+-kn	ಕ್ಯಾಲೆಂಡರ್ ಈವೆಂಟ್ ರಚಿಸಲು ಜಾಹೀರಾತಿಗೆ ಅನುಮತಿಸುವುದೇ?
+-kn	ಕ್ಯಾಲೆಂಡರ್ ಈವೆಂಟ್ ರಚಿಸಿ
+-kn	ನಿರಾಕರಿಸು
+-kn	ಚಿತ್ರದ ಗ್ಯಾಲರಿಯಲ್ಲಿ ಚಿತ್ರ ಸಂಗ್ರಹಿಸಿಡಲು ಜಾಹೀರಾತಿಗೆ ಅನುಮತಿಸುವುದೇ?
+-kn	ಚಿತ್ರ ಉಳಿಸು
+-en-rGB	Accept
+-en-rGB	Allow Ad to create a calendar event?
+-en-rGB	Create calendar event
+-en-rGB	Decline
+-en-rGB	999+
+-en-rGB	Allow Ad to store image in Picture gallery?
+-en-rGB	Save image
+-uz	Qabul qilish
+-uz	Reklamaga taqvim tadbirini yaratishga ruxsat berilsinmi?
+-uz	Taqvim tadbirini yaratish
+-uz	Rad qilish
+-uz	Reklamaga rasmni gallereyaga saqlashga ruxsat berilsinmi?
+-uz	Rasmni saqlash
+-ru	Принять
+-ru	Разрешить объявлению создать мероприятие в календаре?
+-ru	Создание мероприятия
+-ru	Отклонить
+-ru	>999
+-ru	Разрешить объявлению сохранить изображение в галерее?
+-ru	Сохранение изображения
+-mr-rIN	999+
+-fa	پذیرفتن
+-fa	به آگهی اجازه می‌دهید رویدادی در تقویم ایجاد کند؟
+-fa	ایجاد رویداد تقویم
+-fa	نپذیرفتن
+-fa	۹۹۹+
+-fa	به آگهی اجازه می‌دهید تصویر را در گالری تصویر شما ذخیره کند؟
+-fa	ذخیره تصویر
+-lv	Piekrist
+-lv	Vai atļaut reklāmai izveidot kalendāra pasākumu?
+-lv	Kalendāra pasākumu izveide
+-lv	Noraidīt
+-lv	999+
+-lv	Vai atļaut reklāmai saglabāt attēlu galerijā?
+-lv	Saglabāt attēlu
+-da	Accepter
+-da	Vil du tillade, at annoncen at oprette en kalenderbegivenhed?
+-da	Opret kalenderbegivenhed
+-da	Afvis
+-da	999+
+-da	Vil du tillade, at annoncen at gemme billedet i Galleri?
+-da	Gem billedet
+-ka	მიღება
+-ka	აძლევთ ნებას რეკლამას, შექმნას მოვლენა კალენდარში?
+-ka	კალენდარში მოვლენის შექმნა
+-ka	უარყოფა
+-ka	აძლევთ ნებას რეკლამას, შეინახოს სურათი გალერეაში?
+-ka	სურათის შენახვა
+-bs	Prihvati
+-bs	Želite li dozvoliti oglasu da kreira događaj u kalendaru?
+-bs	Napravite događaj u kalendaru
+-bs	Odbijte
+-bs	Želite li dozvoliti da oglas pohrani sliku u Galeriju slika?
+-bs	Sačuvaj sliku
+-sw	Kubali
+-sw	Ungependa kuruhusu tangazo liunde tukio la kalenda?
+-sw	Unda tukio la kalenda
+-sw	Kataa
+-sw	999+
+-sw	Ungependa kuruhusu tangazo lihifadhi picha katika matunzio ya Picha?
+-sw	Hifadhi picha
+-ne	स्वीकार्नुहोस्
+-ne	विज्ञापनलाई पात्रो सम्बन्धी कार्यक्रम सिर्जना गर्न अनुमति दिने हो?
+-ne	पात्रो सम्बन्धी कार्यक्रम सिर्जना गर्नुहोस्
+-ne	अस्वीकार गर्नुहोस्
+-ne	Ad लाई तस्बिर ग्यालरीमा छवि भण्डारण गर्न अनुमति दिने हो?
+-ne	छविलाई सुरक्षित गर्नुहोस्
+-ro	Acceptați
+-ro	Permiteți ca anunțul să creeze un eveniment în calendar?
+-ro	Creați un eveniment în calendar
+-ro	Refuzați
+-ro	˃999
+-ro	Permiteți ca anunțul să stocheze imaginea în Galeria de fotografii?
+-ro	Salvați imaginea
+-uz-rUZ	999+
+-de	Akzeptieren
+-de	Anzeige erlauben, einen Kalendertermin zu erstellen?
+-de	Kalendertermin erstellen
+-de	Ablehnen
+-de	999+
+-de	Anzeige erlauben, das Bild in der Bildergalerie zu speichern?
+-de	Bild speichern
+-hy-rAM	999+
+-ms-rMY	999+
+-kk	Қабылдау
+-kk	Құлақтандыруға күнтізбе оқиғасын жасауға рұқсат ету керек пе?
+-kk	Күнтізбе оқиғасын жасау
+-kk	Бас тарту
+-kk	Құлақтандыруға кескінді суреттер галереясында сақтауға рұқсат ету керек пе?
+-kk	Кескінді сақтау
+-mr	स्वीकार करा
+-mr	जाहिरातीस कॅलेंडर इव्हेंट तयार करण्याची परवानगी द्यायची?
+-mr	कॅलेंडर इव्हेंट तयार करा
+-mr	नकार द्या
+-mr	चित्र गॅलरीत प्रतिमा संग्रहित करण्याची जाहिरातीस अनुमती द्यायची?
+-mr	प्रतिमा जतन करा
+-in	Terima
+-in	Izinkan Iklan membuat acara kalender?
+-in	Buat acara kalender
+-in	Tolak
+-in	999+
+-in	Izinkan Iklan menyimpan gambar di Galeri foto?
+-in	Simpan gambar
+-es-rUS	Aceptar
+-es-rUS	¿Quieres permitir que el anuncio cree un evento de calendario?
+-es-rUS	Crear un evento de calendario
+-es-rUS	Rechazar
+-es-rUS	999+
+-es-rUS	¿Quieres permitir que el anuncio guarde la imagen en la galería de imágenes?
+-es-rUS	Guardar imagen
+-zh-rCN	接受
+-zh-rCN	允许广告创建日历活动吗？
+-zh-rCN	创建日历活动
+-zh-rCN	拒绝
+-zh-rCN	999+
+-zh-rCN	允许广告将图片存储在图库中吗？
+-zh-rCN	保存图片
+-eu-rES	999+
+-mn	Зөвшөөрөх
+-mn	Зарыг хуанлийн үйл явдал үүсгэхийг зөвшөөрөх үү?
+-mn	Хуанлийн үйл явдал үүсгэх
+-mn	Татгалзах
+-mn	Зарыг Зургийн цомогт зураг хадгалахыг зөвшөөрөх үү?
+-mn	Зураг хадгалах
+-fi	Hyväksy
+-fi	Myönnetäänkö mainokselle oikeus luoda kalenteritapahtuma?
+-fi	Luo kalenteritapahtuma
+-fi	Hylkää
+-fi	999+
+-fi	Myönnetäänkö mainokselle oikeus tallentaa kuva galleriaan?
+-fi	Tallenna kuva
+-si	පිළිගන්න
+-si	වෙළඳ දැන්වීමට දින දර්ශන සිදුවීමක් සෑදීමට ඉඩ දෙන්නද?
+-si	දින දර්ශන සිදුවීම සාදන්න
+-si	ප්‍රතික්ෂේප කරන්න
+-si	වෙළඳ දැන්වීමට පින්තූර ගැලරිය තුළ රූපය ගබඩා කිරීමට ඉඩ දෙන්නද?
+-si	රූපය සුරකින්න
+-ne-rNP	९९९+
+-mk	Прифати
+-mk	Дозволете рекламата да создаде настан во календарот?
+-mk	Создајте настан во календарот
+-mk	Одбиј
+-mk	Дозволете рекламата да ја зачува сликата во галеријата со слики?
+-mk	Зачувајте ја сликата
+-th	ยอมรับ
+-th	อนุญาตให้โฆษณาสร้างกิจกรรมในปฏิทินไหม
+-th	สร้างกิจกรรมในปฏิทิน
+-th	ปฏิเสธ
+-th	999+
+-th	อนุญาตให้โฆษณาจัดเก็บรูปภาพในแกลเลอรีภาพไหม
+-th	บันทึกรูปภาพ
+-sv	Godkänn
+-sv	Vill du tillåta att annonsen skapar en kalenderhändelse?
+-sv	Skapa kalenderhändelse
+-sv	Avvisa
+-sv	>999
+-sv	Vill du tillåta att annonsen sparar bilden i Bildgalleriet?
+-sv	Spara bild
+-bg	Приемам
+-bg	Да се разреши ли на рекламата да създаде събитие в календара?
+-bg	Създаване на събитие в календара
+-bg	Отхвърлям
+-bg	999+
+-bg	Да се разреши ли на рекламата да съхрани изображение в галерията със снимки?
+-bg	Запазване на изображението
+-mn-rMN	999+
+-hy	Ընդունել
+-hy	Թույլ տա՞լ Գովազդին ստեղծել օրացույցի իրադարձություն:
+-hy	Ստեղծել օրացույցի իրադարձություն
+-hy	Մերժել
+-hy	Թույլ տա՞լ Գովազդին պահել պատկերը Պատկերասրահում:
+-hy	Պահել պատկերը
+-kk-rKZ	999+
+-pt	999+
+-hu	Elfogadás
+-hu	Engedélyezi a hirdetés számára naptáresemény létrehozását?
+-hu	Naptáresemény létrehozása
+-hu	Elutasítás
+-hu	999+
+-hu	Engedélyezi a hirdetés számára a kép tárolását a Képgalériában?
+-hu	Kép mentése
+-uk	Прийняти
+-uk	Дозволити оголошенню створити подію календаря?
+-uk	Створити подію календаря
+-uk	Відхилити
+-uk	999+
+-uk	Дозволити оголошенню зберегти зображення в галереї?
+-uk	Зберегти зображення
+-af	Aanvaar

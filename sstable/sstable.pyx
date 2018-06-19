@@ -1,9 +1,23 @@
 from libc.stdint cimport *
 from libc.stdio cimport fopen, fdopen, fread, fclose, fwrite, FILE, ferror, perror, feof, fseek, SEEK_SET, getline, SEEK_CUR
 from libc.stdlib cimport malloc, free, realloc
+from libc.string cimport strerror
+import os
 
 cdef extern from "stdio.h":
     ssize_t getdelim(char **lineptr, size_t *n, int delim, FILE *stream)
+
+cdef extern from "sys/mman.h":
+    void *mmap(void *, size_t, int, int, int, size_t)
+    int munmap(void *addr, size_t size)
+    cdef enum:
+        PROT_READ "PROT_READ"
+        MAP_SHARED "MAP_SHARED"
+        MAP_FAILED "MAP_FAILED"
+        MAP_PRIVATE "MAP_PRIVATE"
+
+cdef extern from "errno.h":
+    int errno
 
 import numpy as np
 cimport numpy as np
@@ -13,6 +27,48 @@ import codecs
 
 cdef extern from "util.h":
     void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname)
+    uint32_t hash_bytes(char *inp, size_t inp_size)
+
+def hash_string(s):
+    cdef bytes py_bytes = s.encode()
+    cdef char *cstr = py_bytes
+    return hash_bytes(cstr, len(py_bytes))
+
+def _hashes_from_fd(infile, hashes_tempname, strings_tempname):
+    cdef char *hashes_tempname_c = hashes_tempname
+    cdef char *strings_tempname_c = strings_tempname
+
+    hashes_from_fd(infile.fileno(), hashes_tempname_c, strings_tempname_c)
+
+def duplicate_mask(_sorted_array):
+    cdef np.ndarray sorted_array = _sorted_array
+    cdef size_t n_items = _sorted_array.shape[0]
+    cdef np.ndarray dupe_mask = np.zeros(n_items, dtype=np.bool)
+
+    cdef size_t idx = 0
+    cdef uint32_t prev_hash = 0
+    cdef uint32_t cur_hash
+
+    while idx < n_items:
+        cur_hash = sorted_array[idx]
+        if cur_hash == prev_hash:
+            dupe_mask[idx] = 0
+        else:
+            dupe_mask[idx] = 1
+        prev_hash = cur_hash
+        idx += 1
+
+    # first element is never a duplicate
+    dupe_mask[0] = 1
+
+    return dupe_mask
+
+def sort_uniqify_hashes(hashes, offsets):
+    cdef np.ndarray[long, ndim=1] sort_indexes = np.argsort(hashes)
+    cdef np.ndarray sorted_hashes = hashes[sort_indexes]
+    cdef np.ndarray dupe_mask = duplicate_mask(sorted_hashes)
+    cdef np.ndarray sorted_offsets = offsets[sort_indexes]
+    return (sorted_hashes[dupe_mask], sorted_offsets[dupe_mask])
 
 def build_index(infile, hashes_tempname, hashes_outname, strings_tempname, strings_outname):
 
@@ -21,85 +77,63 @@ def build_index(infile, hashes_tempname, hashes_outname, strings_tempname, strin
     cdef char *strings_tempname_c = strings_tempname
     cdef char *strings_outname_c = strings_outname
 
-    hashes_from_fd(infile.fileno(), hashes_tempname_c, strings_tempname_c)
+    _hashes_from_fd(infile, hashes_tempname, strings_tempname)
 
-    hash_offsets = np.memmap(hashes_tempname, dtype=np.uint32).reshape((-1, 2))
-    cdef size_t n_items = hash_offsets.shape[0]
-    cdef np.ndarray[np.uint32_t, ndim=1] raw_inp_offsets = hash_offsets[:, 1]
-    cdef np.ndarray[np.uint32_t, ndim=1] raw_hashes = hash_offsets[:, 0]
-    cdef np.ndarray[long, ndim=1] sort_indexes = np.argsort(raw_hashes)
+    _bin = np.memmap(hashes_tempname, dtype=np.uint32).reshape((-1, 2))
+    cdef np.ndarray[np.uint32_t, ndim=1] raw_hashes = _bin[:, 0]
+    cdef np.ndarray[np.uint32_t, ndim=1] raw_inp_offsets = _bin[:, 1]
 
-    cdef np.ndarray[np.uint32_t, ndim=1] sorted_inp_offsets = raw_inp_offsets[sort_indexes]
-    cdef np.ndarray[np.uint32_t, ndim=1] sorted_hashes = raw_hashes[sort_indexes]
+    _uniq_hashes, _uniq_offsets = sort_uniqify_hashes(raw_hashes, raw_inp_offsets)
 
-    cdef np.ndarray dupe_mask = np.zeros(n_items, dtype=np.bool)
-
-    cdef size_t idx = 0
-    cdef size_t max_idx = n_items
-    cdef uint32_t prev_hash = 0
-    cdef uint32_t cur_hash
-
-    while idx < max_idx:
-        cur_hash = sorted_hashes[idx]
-        if cur_hash == prev_hash:
-            dupe_mask[idx] = 0
-        else:
-            dupe_mask[idx] = 1
-        prev_hash = cur_hash
-        idx += 1
-
-    _uniq_hashes = sorted_hashes[dupe_mask]
     cdef np.ndarray[np.uint32_t, ndim=1] uniq_hashes = _uniq_hashes
-    cdef np.ndarray[np.uint32_t, ndim=1] uniq_offsets = sorted_inp_offsets[dupe_mask]
-    cdef np.ndarray[np.uint32_t, ndim=2] outp_offsets = np.zeros((_uniq_hashes.shape[0], 2), dtype=np.uint32)
+    cdef np.ndarray[np.uint32_t, ndim=1] uniq_offsets = _uniq_offsets
+    cdef np.ndarray[np.uint32_t, ndim=1] outp_offsets = np.zeros(_uniq_hashes.shape[0], dtype=np.uint32)
+    cdef uint32_t n_uniq = _uniq_hashes.shape[0]
 
-    print _uniq_hashes.shape, np.nonzero(dupe_mask)[0].shape
 
-    cdef size_t current_offset = 0
-    cdef size_t current_idx = 0
-    cdef size_t outp_idx = 0
-    cdef uint32_t line_size = 0
-    cdef FILE *strings_tempfile = fopen(strings_tempname_c, "r")
     cdef FILE *strings_outfile = fopen(strings_outname_c, "w")
-    cdef char *line_buf = <char *> malloc(1024)
-    cdef char *line_buf_cursor = line_buf
-    cdef size_t line_buf_size = 1024
-    cdef size_t read_line_size
-    cdef size_t line_size_cursor
 
-    if line_buf == NULL:
-        raise MemoryError()
+    strings_temp_pyfile = open(strings_tempname, 'a+')
+    cdef int strings_temp_fd = strings_temp_pyfile.fileno()
+    cdef size_t strings_temp_size = os.fstat(strings_temp_fd).st_size
+    cdef char *strings_tempfile = <char *> mmap(
+            NULL, strings_temp_size, PROT_READ, MAP_PRIVATE, strings_temp_fd, 0)
 
+    if (<int> strings_tempfile) == MAP_FAILED:
+        raise IOError(strerror(errno))
+
+    cdef uint32_t current_uniq_offset
+    cdef size_t current_offset = 0 # offset into the output strings file
+
+
+    cdef uint32_t line_size = 0
     try:
-        while current_idx < max_idx:
-            if dupe_mask[current_idx] == 1:
+        for current_idx in range(n_uniq):
 
-                fseek(strings_tempfile, uniq_offsets[outp_idx], SEEK_SET)
-                fread(&line_size, sizeof(line_size), 1, strings_tempfile)
+            current_uniq_offset = uniq_offsets[current_idx]
 
-                print line_size
+            #print current_idx, current_uniq_offset
 
-                if line_buf_size < line_size:
-                    line_buf = <char *> realloc(line_buf, line_size)
-                    line_buf_size = line_size
+            assert current_uniq_offset < strings_temp_size
 
-                fseek(strings_tempfile, sizeof(line_size), SEEK_CUR);
-                fread(line_buf, line_size, 1, strings_tempfile)
-                fwrite(line_buf, line_size, 1, strings_outfile)
+            line_size = (<uint32_t *> (&strings_tempfile[current_uniq_offset]))[0]
 
-                outp_offsets[outp_idx, 0] = current_offset
-                outp_offsets[outp_idx, 1] = line_size
-                current_offset += line_size
+            #print line_size
 
-                outp_idx += 1
-            current_idx += 1
+            #if line_size > 10000:
+            #    break
+
+            fwrite(&strings_tempfile[current_uniq_offset + sizeof(line_size)], line_size, 1, strings_outfile)
+
+            outp_offsets[current_idx] = current_offset
+            current_offset += line_size
+
     finally:
-        fclose(strings_tempfile)
+        munmap(strings_tempfile, strings_temp_size)
+        strings_temp_pyfile.close()
         fclose(strings_outfile)
-        free(line_buf)
 
-    uniq_sort_indexes = sort_indexes[dupe_mask]
-    np.concatenate((uniq_hashes, outp_offsets.flatten())).tofile(hashes_outname)
+    np.concatenate((uniq_hashes, outp_offsets)).tofile(hashes_outname)
 
 
 def build_mat_index(_hashes, _values, _hashes_fname, _strings_fname):
@@ -160,7 +194,7 @@ class SSTable(object):
         self.hashes_file = np.memmap(hashes_fname, dtype=np.uint32)
         self.hashes_length = self.hashes_file.shape[0] / 3
         self.hashes = self.hashes_file[:self.hashes_length]
-        self.offsets = self.hashes_file[self.hashes_length:].reshape((-1, 2))
+        self.offsets = self.hashes_file[self.hashes_length:]
         self.strings = open(strings_fname, 'r')
 
     def decode(self, row):
@@ -170,9 +204,9 @@ class SSTable(object):
         hash_idx = np.searchsorted(self.hashes, k)
         if self.hashes[hash_idx] != k:
             return default
-        offset = self.offsets[hash_idx, 0]
+        offset = self.offsets[hash_idx]
         self.strings.seek(offset)
-        length = self.offsets[hash_idx, 1]
+        length = self.offsets[hash_idx + 1] - offset
         return self.decode(self.strings.read(length))
 
     def itervalues(self):
