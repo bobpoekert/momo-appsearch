@@ -27,7 +27,7 @@ import codecs
 
 cdef extern from "util.h":
     void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname)
-    uint32_t hash_bytes(char *inp, size_t inp_size)
+    uint64_t hash_bytes(char *inp, size_t inp_size)
 
 def hash_string(s):
     cdef bytes py_bytes = s
@@ -46,8 +46,8 @@ def duplicate_mask(_sorted_array):
     cdef np.ndarray dupe_mask = np.zeros(n_items, dtype=np.bool)
 
     cdef size_t idx = 0
-    cdef uint32_t prev_hash = 0
-    cdef uint32_t cur_hash
+    cdef uint64_t prev_hash = 0
+    cdef uint64_t cur_hash
 
     while idx < n_items:
         cur_hash = sorted_array[idx]
@@ -63,14 +63,14 @@ def duplicate_mask(_sorted_array):
 
     return dupe_mask
 
-def searchsorted_uint32(_inp, _target):
-    cdef np.ndarray[uint32_t, ndim=1] inp = _inp
-    cdef uint32_t target = _target
-    cdef uint32_t size = _inp.shape[0]
-    cdef uint32_t right = size
-    cdef uint32_t left = 0
-    cdef uint32_t pivot
-    cdef uint32_t pivot_idx
+def searchsorted_uint64(_inp, _target):
+    cdef np.ndarray[uint64_t, ndim=1] inp = _inp
+    cdef uint64_t target = _target
+    cdef uint64_t size = _inp.shape[0]
+    cdef uint64_t right = size
+    cdef uint64_t left = 0
+    cdef uint64_t pivot
+    cdef uint64_t pivot_idx
 
     if target < inp[0] or target > inp[size - 1]:
         return None
@@ -103,16 +103,16 @@ def build_index(infile, hashes_tempname, hashes_outname, strings_tempname, strin
 
     _hashes_from_fd(infile, hashes_tempname, strings_tempname)
 
-    _bin = np.memmap(hashes_tempname, dtype=np.uint32).reshape((-1, 2))
-    cdef np.ndarray[np.uint32_t, ndim=1] raw_hashes = _bin[:, 0]
-    cdef np.ndarray[np.uint32_t, ndim=1] raw_inp_offsets = _bin[:, 1]
+    _bin = np.memmap(hashes_tempname, dtype=np.uint64).reshape((-1, 2))
+    cdef np.ndarray[np.uint64_t, ndim=1] raw_hashes = _bin[:, 0]
+    cdef np.ndarray[np.uint64_t, ndim=1] raw_inp_offsets = _bin[:, 1]
 
     _uniq_hashes, _uniq_offsets = sort_uniqify_hashes(raw_hashes, raw_inp_offsets)
 
-    cdef np.ndarray[np.uint32_t, ndim=1] uniq_hashes = _uniq_hashes
-    cdef np.ndarray[np.uint32_t, ndim=1] uniq_offsets = _uniq_offsets
-    cdef np.ndarray[np.uint32_t, ndim=1] outp_offsets = np.zeros(_uniq_hashes.shape[0], dtype=np.uint32)
-    cdef uint32_t n_uniq = _uniq_offsets.shape[0]
+    cdef np.ndarray[np.uint64_t, ndim=1] uniq_hashes = _uniq_hashes
+    cdef np.ndarray[np.uint64_t, ndim=1] uniq_offsets = _uniq_offsets
+    cdef np.ndarray[np.uint64_t, ndim=1] outp_offsets = np.zeros(_uniq_hashes.shape[0], dtype=np.uint64)
+    cdef uint64_t n_uniq = _uniq_offsets.shape[0]
 
     cdef FILE *strings_outfile = fopen(strings_outname_c, "w")
 
@@ -125,15 +125,15 @@ def build_index(infile, hashes_tempname, hashes_outname, strings_tempname, strin
     if (<int> strings_tempfile) == MAP_FAILED:
         raise IOError(strerror(errno))
 
-    cdef uint32_t current_uniq_offset
+    cdef uint64_t current_uniq_offset
     cdef size_t current_offset = 0 # offset into the output strings file
 
     cdef size_t outp_idx = 0
 
-    cdef uint32_t line_size = 0
+    cdef uint64_t line_size = 0
     cdef char *line_size_ptr = <char *> &line_size
 
-    cdef np.ndarray[np.uint32_t, ndim=1] outp_hashes = np.zeros((n_uniq,), dtype=np.uint32)
+    cdef np.ndarray[np.uint64_t, ndim=1] outp_hashes = np.zeros((n_uniq,), dtype=np.uint64)
     try:
         print n_uniq
         for current_idx in range(n_uniq):
@@ -175,10 +175,10 @@ def build_mat_index(_hashes, _values, _hashes_fname, _strings_fname):
     takes an array of hashes and a matrix with the same height of values
     and generates an sstable index of hashes -> matrix rows
     """
-    cdef np.ndarray[np.uint32_t, ndim=1] hashes = _hashes
+    cdef np.ndarray[np.uint64_t, ndim=1] hashes = _hashes
     cdef np.ndarray[long, ndim=1] sort_indexes = np.argsort(hashes)
 
-    cdef np.ndarray[np.uint32_t, ndim=1] sorted_hashes = hashes[sort_indexes]
+    cdef np.ndarray[np.uint64_t, ndim=1] sorted_hashes = hashes[sort_indexes]
     cdef np.ndarray sorted_values = _values[sort_indexes]
 
     cdef char *hashes_fname = _hashes_fname
@@ -186,14 +186,14 @@ def build_mat_index(_hashes, _values, _hashes_fname, _strings_fname):
     cdef size_t n_rows = _hashes.shape[0]
 
     cdef size_t row_idx = 0
-    cdef uint32_t current_hash
-    cdef uint32_t prev_hash = 0
+    cdef uint64_t current_hash
+    cdef uint64_t prev_hash = 0
     cdef size_t hash_idx = 0
-    cdef uint32_t current_offset = 0
-    cdef np.ndarray[np.uint32_t, ndim=1] offsets = np.zeros((n_rows,), dtype=np.uint32)
-    cdef np.ndarray[np.uint32_t, ndim=1] uniq_hashes = np.zeros((n_rows,), dtype=np.uint32)
+    cdef uint64_t current_offset = 0
+    cdef np.ndarray[np.uint64_t, ndim=1] offsets = np.zeros((n_rows,), dtype=np.uint64)
+    cdef np.ndarray[np.uint64_t, ndim=1] uniq_hashes = np.zeros((n_rows,), dtype=np.uint64)
     cdef np.ndarray row
-    cdef uint32_t[::1] row_buf
+    cdef uint64_t[::1] row_buf
     cdef size_t row_size
 
     cdef FILE *strings_outf = fopen(strings_fname, "w")
@@ -209,7 +209,7 @@ def build_mat_index(_hashes, _values, _hashes_fname, _strings_fname):
                 row = np.ascontiguousarray(row)
             row_buf = row
             row_size = row.size
-            fwrite(&row_buf[0], sizeof(uint32_t), row_size, strings_outf)
+            fwrite(&row_buf[0], sizeof(uint64_t), row_size, strings_outf)
             current_offset += row_size
             row_idx += 1
             prev_hash = current_hash
@@ -225,7 +225,7 @@ def build_mat_index(_hashes, _values, _hashes_fname, _strings_fname):
 class SSTable(object):
 
     def __init__(self, hashes_fname, strings_fname):
-        self.hashes_file = np.memmap(hashes_fname, dtype=np.uint32)
+        self.hashes_file = np.memmap(hashes_fname, dtype=np.uint64)
         self.hashes_length = self.hashes_file.shape[0] / 2
         self.hashes = self.hashes_file[:self.hashes_length]
         self.offsets = self.hashes_file[self.hashes_length:]
@@ -235,8 +235,8 @@ class SSTable(object):
         return row.decode('utf-8')
 
     def get(self, k, default=None):
-        hash_idx = searchsorted_uint32(self.hashes, k)
-        if self.hashes[hash_idx] != k:
+        hash_idx = searchsorted_uint64(self.hashes, k)
+        if hash_idx is None or self.hashes[hash_idx] != k:
             return default
         offset = self.offsets[hash_idx]
         self.strings.seek(offset)
@@ -247,7 +247,7 @@ class SSTable(object):
         cursor = self.offsets[idx]
         self.strings.seek(cursor)
         if idx < self.hashes_length - 1:
-            length = self.offsets[cursor + 1] - cursor
+            length = self.offsets[idx + 1] - cursor
             return self.strings.read(length)
         else:
             return self.strings.read()
@@ -272,7 +272,7 @@ class SSTable(object):
         return list(self.iteritems())
 
     def values(self):
-        return list(self.iteravlues())
+        return list(self.itervalues())
 
     def keys(self):
         return self.hashes

@@ -15,21 +15,20 @@ class TestCase(tt.TestCase):
     def assertSorted(self, v):
         self.assertNonzeroCount(v[1:] < v[:-1], 0)
 
-
 class DuplicateMaskTest(TestCase):
 
     def test_zeros(self):
-        zz = np.zeros(TEST_ARRAY_SIZE, dtype=np.uint32)
+        zz = np.zeros(TEST_ARRAY_SIZE, dtype=np.uint64)
         mask = sstable.duplicate_mask(zz)
         self.assertNonzeroCount(mask, 1)
 
     def test_ones(self):
-        zz = np.ones(TEST_ARRAY_SIZE, dtype=np.uint32)
+        zz = np.ones(TEST_ARRAY_SIZE, dtype=np.uint64)
         mask = sstable.duplicate_mask(zz)
         self.assertNonzeroCount(mask, 1)
 
     def test_range(self):
-        vv = np.arange(TEST_ARRAY_SIZE[0], dtype=np.uint32)
+        vv = np.arange(TEST_ARRAY_SIZE[0], dtype=np.uint64)
         mask = sstable.duplicate_mask(vv)
         self.assertNonzeroCount(mask, TEST_ARRAY_SIZE[0])
 
@@ -39,10 +38,10 @@ class HashesFromFdTest(TestCase):
         self.infile = open('test_lines.txt', 'r')
         sstable.build_index(self.infile,
                 'test_hashes.bin.tmp', 'test_hashes.bin', 'test_strings.txt.tmp', 'test_strings.txt')
-        self.bin = np.memmap('test_hashes.bin.tmp', dtype=np.uint32).reshape((-1, 2))
+        self.bin = np.memmap('test_hashes.bin.tmp', dtype=np.uint64).reshape((-1, 2))
         self.hashes = self.bin[:, 0]
         self.offsets = self.bin[:, 1]
-        self.bin2 = np.memmap('test_hashes.bin', dtype=np.uint32)
+        self.bin2 = np.memmap('test_hashes.bin', dtype=np.uint64)
         self.bin2_count = self.bin2.shape[0] / 2
         self.hashes2 = self.bin2[:self.bin2_count]
         self.offsets2 = self.bin2[self.bin2_count:]
@@ -61,7 +60,7 @@ class HashesFromFdTest(TestCase):
 
     def iter_strings(self):
         with open('test_strings.txt.tmp', 'r') as inf:
-            size = struct.unpack('<I', inf.read(4))[0]
+            size = struct.unpack('<Q', inf.read(8))[0]
             yield (size, inf.read(size))
 
     def bin_lengths(self):
@@ -80,20 +79,20 @@ class HashesFromFdTest(TestCase):
 
     def test_lengths_match(self):
         for (ss, sv), b in it.izip(self.iter_strings(), self.bin_lengths()):
-            self.assertEqual(ss + 4, b)
+            self.assertEqual(ss + 8, b)
 
     def compute_offsets(self):
         offset_acc = 0
         computed_offsets = []
         with open('test_strings.txt.tmp', 'r') as inf:
             while 1:
-                blob = inf.read(4)
-                if len(blob) < 4:
+                blob = inf.read(8)
+                if len(blob) < 8:
                     break
-                size = struct.unpack('<I', blob)[0]
+                size = struct.unpack('<Q', blob)[0]
                 computed_offsets.append(offset_acc)
                 offset_acc += size
-                offset_acc += 4
+                offset_acc += 8
                 inf.read(size)
         return computed_offsets
 
@@ -103,7 +102,7 @@ class HashesFromFdTest(TestCase):
 
     def get_string_length(self, offset):
         self.tmp_strings.seek(offset)
-        return struct.unpack('<I', self.tmp_strings.read(4))[0]
+        return struct.unpack('<Q', self.tmp_strings.read(8))[0]
 
     def get_res_string(self, offset, length):
         self.strings.seek(offset)
@@ -140,7 +139,8 @@ class HashesFromFdTest(TestCase):
     def test_lookups(self):
         for (_, row) in self.iter_strings():
             hh = sstable.hash_string(row)
-            idx = np.searchsorted(self.hashes2, hh)
+            idx = sstable.searchsorted_uint64(self.hashes2, hh)
+            self.assertIsNotNone(idx)
             self.assertEqual(hh, self.hashes2[idx])
             offset = self.offsets2[idx]
             length = self.offsets2[idx + 1] - offset
@@ -149,4 +149,11 @@ class HashesFromFdTest(TestCase):
             self.assertEqual(self.table.get(hh), row.decode('utf-8'))
 
 if __name__ == '__main__':
-    tt.main()
+    import sys
+    if len(sys.argv) == 2:
+        outfname = sys.argv[1]
+        with open(outfname, 'w') as outf:
+            runner = tt.TextTestRunner(outf)
+            tt.main(testRunner=runner)
+    else:
+        tt.main()

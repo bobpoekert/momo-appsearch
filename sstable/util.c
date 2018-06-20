@@ -3,59 +3,63 @@
 #include <stdlib.h>
 #include <string.h>
 
-/* transliterated for comaptibility from: https://github.com/clojure/clojure/blob/master/src/jvm/clojure/lang/Murmur3.java */
+#define BIG_CONSTANT(x) (x##LLU)
+#define SEED 0xdeadbeef
 
-#define SEED 0
-#define C1 0xcc9e2d51
-#define C2 0x1b873593
+//-----------------------------------------------------------------------------
+// MurmurHash2, 64-bit versions, by Austin Appleby
 
-inline uint32_t rotl32 ( uint32_t x, int8_t r ) {
-  return (x << r) | (x >> (32 - r));
-}
+// The same caveats as 32-bit MurmurHash2 apply here - beware of alignment 
+// and endian-ness issues if used across multiple platforms.
 
-inline uint32_t mixK1(uint32_t k1) {
-    k1 *= C1;
-    k1 = rotl32(k1, 15);
-    k1 *= C2;
-    return k1;
-}
+// 64-bit hash for 64-bit platforms
 
-inline uint32_t mixH1(uint32_t h1, uint32_t k1) {
-    h1 ^= k1;
-    h1 = rotl32(h1, 13);
-    h1 =  h1 * 5 + 0xe6546b64A;
-    return h1;
-}
+uint64_t hash_bytes( const void * key, size_t len) {
+    const uint64_t m = BIG_CONSTANT(0xc6a4a7935bd1e995);
+    const int r = 47;
 
-inline uint32_t fmix(uint32_t h1, size_t length) {
-    h1 ^= length;
-	h1 ^= h1 >> 16;
-	h1 *= 0x85ebca6b;
-	h1 ^= h1 >> 13;
-	h1 *= 0xc2b2ae35;
-	h1 ^= h1 >> 16;
-	return h1;
-}
+    uint64_t h = SEED ^ (len * m);
 
-uint32_t hash_bytes(char *inp, size_t inp_size) {
-    uint32_t h1 = SEED;
-    for (int i=1; i < inp_size; i += 2) {
-        uint32_t k1 = inp[i - 1] | (inp[i] << 16);
-        k1 = mixK1(k1);
-        h1 = mixH1(h1, k1);
+    const uint64_t * data = (const uint64_t *)key;
+    const uint64_t * end = data + (len/8);
+
+    while(data != end) {
+        uint64_t k = *data++;
+
+        k *= m; 
+        k ^= k >> r; 
+        k *= m; 
+
+        h ^= k;
+        h *= m; 
     }
-    if ((inp_size & 1) == 1) {
-        uint32_t k1 = inp[inp_size - 1];
-        k1 = mixK1(k1);
-        h1 ^= k1;
-    }
-    return fmix(h1, inp_size * 2);
-}
 
-#define HEAP_ROW_SIZE (sizeof(uint32_t) * 2)
-uint32_t heap_insert_counts_uint32(
-        uint32_t *heap, size_t n_heap_items, size_t max_heap_items,
-        uint32_t new_item) {
+    const unsigned char * data2 = (const unsigned char*)data;
+
+    switch(len & 7) {
+        case 7: h ^= ((uint64_t) data2[6]) << 48;
+        case 6: h ^= ((uint64_t) data2[5]) << 40;
+        case 5: h ^= ((uint64_t) data2[4]) << 32;
+        case 4: h ^= ((uint64_t) data2[3]) << 24;
+        case 3: h ^= ((uint64_t) data2[2]) << 16;
+        case 2: h ^= ((uint64_t) data2[1]) << 8;
+        case 1: h ^= ((uint64_t) data2[0]);
+                h *= m;
+    };
+
+    h ^= h >> r;
+    h *= m;
+    h ^= h >> r;
+
+    return h;
+} 
+
+
+
+#define HEAP_ROW_SIZE (sizeof(uint64_t) * 2)
+uint64_t heap_insert_counts_uint32(
+        uint64_t *heap, size_t n_heap_items, size_t max_heap_items,
+        uint64_t new_item) {
 
     size_t heap_start = 0;
     size_t heap_end = n_heap_items;
@@ -63,7 +67,7 @@ uint32_t heap_insert_counts_uint32(
     while(heap_end > heap_start) {
         size_t heap_mid = heap_start + (heap_end - heap_start) / 2;
         size_t heap_mid_idx = heap_mid * 2;
-        uint32_t target = heap[heap_mid_idx];
+        uint64_t target = heap[heap_mid_idx];
         if (target == new_item) {
             heap[heap_mid_idx + 1]++;
             return heap[heap_mid_idx + 1];
@@ -87,10 +91,10 @@ uint32_t heap_insert_counts_uint32(
         heap[heap_start + 1] = 1;
     } else {
 
-        uint32_t min_count = 0xffffffff;
-        uint32_t min_count_idx = 0;
+        uint64_t min_count = 0xffffffffffffffff;
+        uint64_t min_count_idx = 0;
         for (size_t i=1; i < n_heap_items; i += 2) {
-            uint32_t current_count = heap[i];
+            uint64_t current_count = heap[i];
             if (current_count < min_count) {
                 min_count = current_count;
                 min_count_idx = i-1;
@@ -144,14 +148,14 @@ void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname) {
     size_t buffer_size;
     char *current_line;
     ssize_t line_size;
-    uint32_t outp_line_size;
+    uint64_t outp_line_size;
 
-    uint32_t current_hash;
-    uint32_t current_strings_offset;
+    uint64_t current_hash;
+    uint64_t current_strings_offset;
 
     size_t heap_size;
-    uint32_t *heap;
-    uint32_t heap_insert_res;
+    uint64_t *heap;
+    uint64_t heap_insert_res;
 
     FILE *hashes_f;
     FILE *strings_f;
@@ -194,8 +198,8 @@ void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname) {
         if (heap_insert_res < 1) {
 
 
-            if (fwrite(&current_hash, 4, 1, hashes_f) < 1) break;
-            if (fwrite(&current_strings_offset, 4, 1, hashes_f) < 1) break;
+            if (fwrite(&current_hash, sizeof(current_hash), 1, hashes_f) < 1) break;
+            if (fwrite(&current_strings_offset, sizeof(current_strings_offset), 1, hashes_f) < 1) break;
             
             outp_line_size = line_size;
             if (fwrite(&outp_line_size, sizeof(outp_line_size), 1, strings_f) < 1) break;
