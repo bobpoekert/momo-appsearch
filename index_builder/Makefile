@@ -8,18 +8,10 @@ pybuild: pymcdb.a
 	cython -o mcdb.c mcdb.pyx
 	gcc -shared -pthread -fPIC -fwrapv -Ofast -Wall -I$(PYINCLUDE) -o mcdb.so mcdb.c pymcdb.a ../utils/mcdb/libmcdb.a
 
-english.mcdb:
-	gunzip -c strings.gz | \
-		cut -f 3,4 |\
-		grep -E $$'^(\t)|^(\s*\-en)' |\
-		../utils/gencdb/gencdb english.mcdb
-	mcdbctl uniq english.mcdb
-
-all_strings.mcdb:
+all_strings.sstable:
 	gunzip -c strings.gz | \
 		cut -f 3,4 | \
-		../utils/gencdb/gencdb all_strings.mcdb
-	mcdbctl uniq all_strings.mcdb
+		python ../sstable/build_index.py strings.sstable strings.txt.sstable
 
 pairwise_hashes.bin:
 	lein with-profile pairwise-text-hashes run `pwd`/strings.gz `pwd`/pairwise_hashes.bin
@@ -30,5 +22,5 @@ variances.so:
 ambiguity: pairwise_hashes.bin variances.so
 	./ambiguity.py pairwise_hashes.bin translations.bin ambiguity.bin
 
-word_vectors: english.mcdb mcdb.so
-	./word_vectors.py english.mcdb english.annoy english_annoy_hashes.bin
+word_vectors: all_strings.sstable
+	./word_vectors.py all_strings.sstable english.annoy english_annoy_hashes.bin
