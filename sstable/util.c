@@ -145,8 +145,10 @@ void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname) {
     char *current_line;
     ssize_t line_size;
     uint32_t outp_line_size;
+
     uint32_t current_hash;
     uint32_t current_strings_offset;
+
     size_t heap_size;
     uint32_t *heap;
     uint32_t heap_insert_res;
@@ -173,6 +175,7 @@ void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname) {
         line_size = getline(&current_line, &buffer_size, inp_f);
         if (line_size < 0) break;
         if (line_size < 1) continue;
+        if (line_size > 100000) continue;
         line_size--; /* strip trailing newline */
 
         current_hash = hash_bytes(current_line, line_size);
@@ -190,19 +193,21 @@ void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname) {
 
         if (heap_insert_res < 1) {
 
-            current_strings_offset = ftell(strings_f);
 
-            if (fwrite(&current_hash, sizeof(current_hash), 1, hashes_f) < 1) break;
-            if (fwrite(&current_strings_offset, sizeof(current_strings_offset), 1, hashes_f) < 1) break;
+            if (fwrite(&current_hash, 4, 1, hashes_f) < 1) break;
+            if (fwrite(&current_strings_offset, 4, 1, hashes_f) < 1) break;
             
             outp_line_size = line_size;
             if (fwrite(&outp_line_size, sizeof(outp_line_size), 1, strings_f) < 1) break;
+            current_strings_offset += sizeof(outp_line_size);
             if (fwrite(current_line, line_size, 1, strings_f) < 1) break;
+            current_strings_offset += line_size;
 
         }
 
     }
 
+    printf("max line size: %d\n", max_line_size);
     fclose(hashes_f);
     fclose(strings_f);
     free(current_line);

@@ -13,8 +13,7 @@ class TestCase(tt.TestCase):
         self.assertEqual(np.nonzero(v)[0].shape[0], c)
 
     def assertSorted(self, v):
-        self.assertNonzeroCount(
-                v[1:] < v[:-1], 0)
+        self.assertNonzeroCount(v[1:] < v[:-1], 0)
 
 
 class DuplicateMaskTest(TestCase):
@@ -74,6 +73,10 @@ class HashesFromFdTest(TestCase):
             else:
                 yield v - prev
             prev = v
+
+    def test_offsets_nonzero(self):
+        self.assertNonzeroCount(self.offsets, self.offsets.shape[0] - 1)
+        self.assertNonzeroCount(self.offsets2, self.offsets2.shape[0] - 1)
 
     def test_lengths_match(self):
         for (ss, sv), b in it.izip(self.iter_strings(), self.bin_lengths()):

@@ -30,7 +30,7 @@ cdef extern from "util.h":
     uint32_t hash_bytes(char *inp, size_t inp_size)
 
 def hash_string(s):
-    cdef bytes py_bytes = s.encode()
+    cdef bytes py_bytes = s
     cdef char *cstr = py_bytes
     return hash_bytes(cstr, len(py_bytes))
 
@@ -63,6 +63,30 @@ def duplicate_mask(_sorted_array):
 
     return dupe_mask
 
+def searchsorted_uint32(_inp, _target):
+    cdef np.ndarray[uint32_t, ndim=1] inp = _inp
+    cdef uint32_t target = _target
+    cdef uint32_t size = _inp.shape[0]
+    cdef uint32_t right = size
+    cdef uint32_t left = 0
+    cdef uint32_t pivot
+    cdef uint32_t pivot_idx
+
+    if target < inp[0] or target > inp[size - 1]:
+        return None
+
+    while right > left:
+        pivot_idx = left + (right - left) / 2
+        pivot = inp[pivot_idx]
+        if pivot == target:
+            return pivot_idx
+        elif pivot > target:
+            right = pivot_idx
+        elif pivot < target:
+            left = pivot_idx
+
+    return None
+
 def sort_uniqify_hashes(hashes, offsets):
     cdef np.ndarray[long, ndim=1] sort_indexes = np.argsort(hashes)
     cdef np.ndarray sorted_hashes = hashes[sort_indexes]
@@ -88,8 +112,7 @@ def build_index(infile, hashes_tempname, hashes_outname, strings_tempname, strin
     cdef np.ndarray[np.uint32_t, ndim=1] uniq_hashes = _uniq_hashes
     cdef np.ndarray[np.uint32_t, ndim=1] uniq_offsets = _uniq_offsets
     cdef np.ndarray[np.uint32_t, ndim=1] outp_offsets = np.zeros(_uniq_hashes.shape[0], dtype=np.uint32)
-    cdef uint32_t n_uniq = _uniq_hashes.shape[0]
-
+    cdef uint32_t n_uniq = _uniq_offsets.shape[0]
 
     cdef FILE *strings_outfile = fopen(strings_outname_c, "w")
 
@@ -105,8 +128,12 @@ def build_index(infile, hashes_tempname, hashes_outname, strings_tempname, strin
     cdef uint32_t current_uniq_offset
     cdef size_t current_offset = 0 # offset into the output strings file
 
+    cdef size_t outp_idx = 0
 
     cdef uint32_t line_size = 0
+    cdef char *line_size_ptr = <char *> &line_size
+
+    cdef np.ndarray[np.uint32_t, ndim=1] outp_hashes = np.zeros((n_uniq,), dtype=np.uint32)
     try:
         print n_uniq
         for current_idx in range(n_uniq):
@@ -120,27 +147,27 @@ def build_index(infile, hashes_tempname, hashes_outname, strings_tempname, strin
 
             assert current_uniq_offset < strings_temp_size
 
-            line_size = (<uint32_t *> (&strings_tempfile[current_uniq_offset]))[0]
+            line_size_ptr[0] = strings_tempfile[current_uniq_offset]
+            line_size_ptr[1] = strings_tempfile[current_uniq_offset + 1]
+            line_size_ptr[2] = strings_tempfile[current_uniq_offset + 2]
+            line_size_ptr[3] = strings_tempfile[current_uniq_offset + 3]
 
-
-            #print line_size
-
-            #if line_size > 10000:
-            #    break
+            if line_size > 100000:
+                print current_idx, outp_idx, line_size, current_uniq_offset, uniq_hashes[outp_idx]
+                break
 
             current_offset = ftell(strings_outfile)
-            if line_size > 1000000:
-                print line_size, current_uniq_offset
-                continue
             fwrite(&strings_tempfile[current_uniq_offset + sizeof(line_size)], line_size, 1, strings_outfile)
-            outp_offsets[current_idx] = current_offset
+            outp_offsets[outp_idx] = current_offset
+            outp_hashes[outp_idx] = uniq_hashes[outp_idx]
+            outp_idx += 1
 
     finally:
         munmap(strings_tempfile, strings_temp_size)
         strings_temp_pyfile.close()
         fclose(strings_outfile)
 
-    np.concatenate((uniq_hashes, outp_offsets)).tofile(hashes_outname)
+    np.concatenate((outp_hashes, outp_offsets)).tofile(hashes_outname)
 
 
 def build_mat_index(_hashes, _values, _hashes_fname, _strings_fname):
@@ -208,7 +235,7 @@ class SSTable(object):
         return row.decode('utf-8')
 
     def get(self, k, default=None):
-        hash_idx = np.searchsorted(self.hashes, k)
+        hash_idx = searchsorted_uint32(self.hashes, k)
         if self.hashes[hash_idx] != k:
             return default
         offset = self.offsets[hash_idx]
@@ -216,18 +243,33 @@ class SSTable(object):
         length = self.offsets[hash_idx + 1] - offset
         return self.decode(self.strings.read(length))
 
-    def itervalues(self):
+    def read_idx(self, idx):
+        cursor = self.offsets[idx]
+        self.strings.seek(cursor)
+        if idx < self.hashes_length - 1:
+            length = self.offsets[cursor + 1] - cursor
+            return self.strings.read(length)
+        else:
+            return self.strings.read()
+
+    def raw_itervalues(self):
         idx = 0
-        cursor = 0
         while idx < self.hashes_length:
-            self.strings.seek(cursor)
-            if idx < self.hashes_length - 1:
-                length = self.offsets[cursor + 1] - cursor
-                yield self.decode(self.strings.read(length))
-            else:
-                yield self.decode(self.strings.read())
+            yield self.read_idx(idx)
             idx += 1
-            cursor += length
+
+    def itervalues(self):
+        for row in self.raw_itervalues():
+            yield self.decode(row)
+
+    def iteritems(self):
+        idx = 0
+        while idx < self.hashes_length:
+            yield (self.hashes[idx], self.read_idx(idx))
+            idx += 1
+
+    def items(self):
+        return list(self.iteritems())
 
     def values(self):
         return list(self.iteravlues())
