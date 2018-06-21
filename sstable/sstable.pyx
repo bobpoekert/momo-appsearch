@@ -265,7 +265,7 @@ class SSTable(object):
     def iteritems(self):
         idx = 0
         while idx < self.hashes_length:
-            yield (self.hashes[idx], self.read_idx(idx))
+            yield (self.hashes[idx], self.decode(self.read_idx(idx)))
             idx += 1
 
     def items(self):

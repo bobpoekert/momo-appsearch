@@ -10,7 +10,7 @@ cdef extern from "Python.h":
     object PyString_FromStringAndSize(char *s, Py_ssize_t len)
 
 def clean_tokens(instring):
-    cdef bytes py_bytes = instring.encode('utf-8')
+    cdef bytes py_bytes = instring
     cdef char *c_bytes = py_bytes
     cdef size_t inp_size = len(py_bytes)
     cdef size_t max_res_size = inp_size * 2

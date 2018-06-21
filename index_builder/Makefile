@@ -8,7 +8,7 @@ pybuild: pymcdb.a
 	cython -o mcdb.c mcdb.pyx
 	gcc -shared -pthread -fPIC -fwrapv -Ofast -Wall -I$(PYINCLUDE) -o mcdb.so mcdb.c pymcdb.a ../utils/mcdb/libmcdb.a
 
-all_strings.sstable:
+strings.sstable:
 	gunzip -c strings.gz | \
 		cut -f 3,4 | \
 		python ../sstable/build_index.py strings.sstable strings.txt.sstable
@@ -19,8 +19,8 @@ pairwise_hashes.bin:
 variances.so:
 	cythonize -i variances.pyx
 
-ambiguity: pairwise_hashes.bin variances.so
+ambiguity.bin: pairwise_hashes.bin variances.so
 	./ambiguity.py pairwise_hashes.bin translations.bin ambiguity.bin
 
-word_vectors: all_strings.sstable
-	./word_vectors.py all_strings.sstable english.annoy english_annoy_hashes.bin
+english.annoy: strings.sstable
+	./word_vectors.py strings.sstable strings.txt.sstable english.annoy
