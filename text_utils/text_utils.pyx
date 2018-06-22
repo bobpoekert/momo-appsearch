@@ -27,6 +27,9 @@ def hash_tokens(instring):
     cdef char *c_bytes = py_bytes
     cdef size_t inp_size = len(py_bytes)
 
+    if inp_size < 1:
+        return []
+
     cdef uint64_t[:] res_buf = view.array(shape=(inp_size,), itemsize=sizeof(uint64_t), format='Q')
 
     cdef size_t res_size = c_hash_tokens(c_bytes, inp_size, &res_buf[0], inp_size)

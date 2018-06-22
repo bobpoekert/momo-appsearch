@@ -103,7 +103,7 @@ size_t expand_tokens(char *inp, size_t inp_size, char *out_buf, size_t max_outp_
                 outp_idx++;
             }
             if (outp_idx >= max_outp_size) break;
-            if (outp_idx >= max_outp_size - 1) {
+            if (inp_idx < inp_size) {
                 out_buf[outp_idx] = ' ';
                 in_whitespace = 1;
                 outp_idx++;
@@ -176,6 +176,7 @@ size_t hash_tokens(char *instring, size_t instring_length, uint64_t *outp, size_
         if (is_whitespace(cur_char) && offset > cur_hash_start) {
             outp[outp_idx] = hash_bytes(&instring[cur_hash_start], offset - cur_hash_start);
             outp_idx++;
+            cur_hash_start = offset + char_size;
         }
         offset += char_size;
     }

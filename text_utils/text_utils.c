@@ -2067,11 +2067,12 @@ static PyObject *__pyx_pf_10text_utils_2hash_tokens(CYTHON_UNUSED PyObject *__py
   PyObject *__pyx_t_1 = NULL;
   char *__pyx_t_2;
   Py_ssize_t __pyx_t_3;
-  PyObject *__pyx_t_4 = NULL;
+  int __pyx_t_4;
   PyObject *__pyx_t_5 = NULL;
-  __Pyx_memviewslice __pyx_t_6 = { 0, 0, { 0 }, { 0 }, { 0 } };
-  Py_ssize_t __pyx_t_7;
-  int __pyx_t_8;
+  PyObject *__pyx_t_6 = NULL;
+  __Pyx_memviewslice __pyx_t_7 = { 0, 0, { 0 }, { 0 }, { 0 } };
+  Py_ssize_t __pyx_t_8;
+  int __pyx_t_9;
   __Pyx_RefNannySetupContext("hash_tokens", 0);
 
   /* "text_utils.pyx":26
@@ -2106,7 +2107,7 @@ static PyObject *__pyx_pf_10text_utils_2hash_tokens(CYTHON_UNUSED PyObject *__py
  *     cdef char *c_bytes = py_bytes
  *     cdef size_t inp_size = len(py_bytes)             # <<<<<<<<<<<<<<
  * 
- *     cdef uint64_t[:] res_buf = view.array(shape=(inp_size,), itemsize=sizeof(uint64_t), format='Q')
+ *     if inp_size < 1:
  */
   if (unlikely(__pyx_v_py_bytes == Py_None)) {
     PyErr_SetString(PyExc_TypeError, "object of type 'NoneType' has no len()");
@@ -2118,71 +2119,104 @@ static PyObject *__pyx_pf_10text_utils_2hash_tokens(CYTHON_UNUSED PyObject *__py
   /* "text_utils.pyx":30
  *     cdef size_t inp_size = len(py_bytes)
  * 
+ *     if inp_size < 1:             # <<<<<<<<<<<<<<
+ *         return []
+ * 
+ */
+  __pyx_t_4 = ((__pyx_v_inp_size < 1) != 0);
+  if (__pyx_t_4) {
+
+    /* "text_utils.pyx":31
+ * 
+ *     if inp_size < 1:
+ *         return []             # <<<<<<<<<<<<<<
+ * 
+ *     cdef uint64_t[:] res_buf = view.array(shape=(inp_size,), itemsize=sizeof(uint64_t), format='Q')
+ */
+    __Pyx_XDECREF(__pyx_r);
+    __pyx_t_1 = PyList_New(0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 31, __pyx_L1_error)
+    __Pyx_GOTREF(__pyx_t_1);
+    __pyx_r = __pyx_t_1;
+    __pyx_t_1 = 0;
+    goto __pyx_L0;
+
+    /* "text_utils.pyx":30
+ *     cdef size_t inp_size = len(py_bytes)
+ * 
+ *     if inp_size < 1:             # <<<<<<<<<<<<<<
+ *         return []
+ * 
+ */
+  }
+
+  /* "text_utils.pyx":33
+ *         return []
+ * 
  *     cdef uint64_t[:] res_buf = view.array(shape=(inp_size,), itemsize=sizeof(uint64_t), format='Q')             # <<<<<<<<<<<<<<
  * 
  *     cdef size_t res_size = c_hash_tokens(c_bytes, inp_size, &res_buf[0], inp_size)
  */
-  __pyx_t_1 = __Pyx_PyDict_NewPresized(3); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 30, __pyx_L1_error)
+  __pyx_t_1 = __Pyx_PyDict_NewPresized(3); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 33, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
-  __pyx_t_4 = __Pyx_PyInt_FromSize_t(__pyx_v_inp_size); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 30, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_4);
-  __pyx_t_5 = PyTuple_New(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 30, __pyx_L1_error)
+  __pyx_t_5 = __Pyx_PyInt_FromSize_t(__pyx_v_inp_size); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 33, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
-  __Pyx_GIVEREF(__pyx_t_4);
-  PyTuple_SET_ITEM(__pyx_t_5, 0, __pyx_t_4);
-  __pyx_t_4 = 0;
-  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_shape, __pyx_t_5) < 0) __PYX_ERR(0, 30, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __pyx_t_5 = __Pyx_PyInt_FromSize_t((sizeof(uint64_t))); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 30, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_5);
-  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_itemsize, __pyx_t_5) < 0) __PYX_ERR(0, 30, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_format, __pyx_n_s_Q) < 0) __PYX_ERR(0, 30, __pyx_L1_error)
-  __pyx_t_5 = __Pyx_PyObject_Call(((PyObject *)__pyx_array_type), __pyx_empty_tuple, __pyx_t_1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 30, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_5);
+  __pyx_t_6 = PyTuple_New(1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 33, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_6);
+  __Pyx_GIVEREF(__pyx_t_5);
+  PyTuple_SET_ITEM(__pyx_t_6, 0, __pyx_t_5);
+  __pyx_t_5 = 0;
+  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_shape, __pyx_t_6) < 0) __PYX_ERR(0, 33, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+  __pyx_t_6 = __Pyx_PyInt_FromSize_t((sizeof(uint64_t))); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 33, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_6);
+  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_itemsize, __pyx_t_6) < 0) __PYX_ERR(0, 33, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+  if (PyDict_SetItem(__pyx_t_1, __pyx_n_s_format, __pyx_n_s_Q) < 0) __PYX_ERR(0, 33, __pyx_L1_error)
+  __pyx_t_6 = __Pyx_PyObject_Call(((PyObject *)__pyx_array_type), __pyx_empty_tuple, __pyx_t_1); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 33, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_6);
   __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
-  __pyx_t_6 = __Pyx_PyObject_to_MemoryviewSlice_ds_nn_uint64_t(__pyx_t_5);
-  if (unlikely(!__pyx_t_6.memview)) __PYX_ERR(0, 30, __pyx_L1_error)
-  __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
-  __pyx_v_res_buf = __pyx_t_6;
-  __pyx_t_6.memview = NULL;
-  __pyx_t_6.data = NULL;
+  __pyx_t_7 = __Pyx_PyObject_to_MemoryviewSlice_ds_nn_uint64_t(__pyx_t_6);
+  if (unlikely(!__pyx_t_7.memview)) __PYX_ERR(0, 33, __pyx_L1_error)
+  __Pyx_DECREF(__pyx_t_6); __pyx_t_6 = 0;
+  __pyx_v_res_buf = __pyx_t_7;
+  __pyx_t_7.memview = NULL;
+  __pyx_t_7.data = NULL;
 
-  /* "text_utils.pyx":32
+  /* "text_utils.pyx":35
  *     cdef uint64_t[:] res_buf = view.array(shape=(inp_size,), itemsize=sizeof(uint64_t), format='Q')
  * 
  *     cdef size_t res_size = c_hash_tokens(c_bytes, inp_size, &res_buf[0], inp_size)             # <<<<<<<<<<<<<<
  * 
  *     return res_buf[:res_size]
  */
-  __pyx_t_7 = 0;
-  __pyx_t_8 = -1;
-  if (__pyx_t_7 < 0) {
-    __pyx_t_7 += __pyx_v_res_buf.shape[0];
-    if (unlikely(__pyx_t_7 < 0)) __pyx_t_8 = 0;
-  } else if (unlikely(__pyx_t_7 >= __pyx_v_res_buf.shape[0])) __pyx_t_8 = 0;
-  if (unlikely(__pyx_t_8 != -1)) {
-    __Pyx_RaiseBufferIndexError(__pyx_t_8);
-    __PYX_ERR(0, 32, __pyx_L1_error)
+  __pyx_t_8 = 0;
+  __pyx_t_9 = -1;
+  if (__pyx_t_8 < 0) {
+    __pyx_t_8 += __pyx_v_res_buf.shape[0];
+    if (unlikely(__pyx_t_8 < 0)) __pyx_t_9 = 0;
+  } else if (unlikely(__pyx_t_8 >= __pyx_v_res_buf.shape[0])) __pyx_t_9 = 0;
+  if (unlikely(__pyx_t_9 != -1)) {
+    __Pyx_RaiseBufferIndexError(__pyx_t_9);
+    __PYX_ERR(0, 35, __pyx_L1_error)
   }
-  __pyx_v_res_size = hash_tokens(__pyx_v_c_bytes, __pyx_v_inp_size, (&(*((uint64_t *) ( /* dim=0 */ (__pyx_v_res_buf.data + __pyx_t_7 * __pyx_v_res_buf.strides[0]) )))), __pyx_v_inp_size);
+  __pyx_v_res_size = hash_tokens(__pyx_v_c_bytes, __pyx_v_inp_size, (&(*((uint64_t *) ( /* dim=0 */ (__pyx_v_res_buf.data + __pyx_t_8 * __pyx_v_res_buf.strides[0]) )))), __pyx_v_inp_size);
 
-  /* "text_utils.pyx":34
+  /* "text_utils.pyx":37
  *     cdef size_t res_size = c_hash_tokens(c_bytes, inp_size, &res_buf[0], inp_size)
  * 
  *     return res_buf[:res_size]             # <<<<<<<<<<<<<<
  */
   __Pyx_XDECREF(__pyx_r);
-  __pyx_t_6.data = __pyx_v_res_buf.data;
-  __pyx_t_6.memview = __pyx_v_res_buf.memview;
-  __PYX_INC_MEMVIEW(&__pyx_t_6, 0);
-  __pyx_t_8 = -1;
+  __pyx_t_7.data = __pyx_v_res_buf.data;
+  __pyx_t_7.memview = __pyx_v_res_buf.memview;
+  __PYX_INC_MEMVIEW(&__pyx_t_7, 0);
+  __pyx_t_9 = -1;
   if (unlikely(__pyx_memoryview_slice_memviewslice(
-    &__pyx_t_6,
+    &__pyx_t_7,
     __pyx_v_res_buf.shape[0], __pyx_v_res_buf.strides[0], __pyx_v_res_buf.suboffsets[0],
     0,
     0,
-    &__pyx_t_8,
+    &__pyx_t_9,
     0,
     __pyx_v_res_size,
     0,
@@ -2191,16 +2225,16 @@ static PyObject *__pyx_pf_10text_utils_2hash_tokens(CYTHON_UNUSED PyObject *__py
     0,
     1) < 0))
 {
-    __PYX_ERR(0, 34, __pyx_L1_error)
+    __PYX_ERR(0, 37, __pyx_L1_error)
 }
 
-__pyx_t_5 = __pyx_memoryview_fromslice(__pyx_t_6, 1, (PyObject *(*)(char *)) __pyx_memview_get_nn_uint64_t, (int (*)(char *, PyObject *)) __pyx_memview_set_nn_uint64_t, 0);; if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 34, __pyx_L1_error)
-  __Pyx_GOTREF(__pyx_t_5);
-  __PYX_XDEC_MEMVIEW(&__pyx_t_6, 1);
-  __pyx_t_6.memview = NULL;
-  __pyx_t_6.data = NULL;
-  __pyx_r = __pyx_t_5;
-  __pyx_t_5 = 0;
+__pyx_t_6 = __pyx_memoryview_fromslice(__pyx_t_7, 1, (PyObject *(*)(char *)) __pyx_memview_get_nn_uint64_t, (int (*)(char *, PyObject *)) __pyx_memview_set_nn_uint64_t, 0);; if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 37, __pyx_L1_error)
+  __Pyx_GOTREF(__pyx_t_6);
+  __PYX_XDEC_MEMVIEW(&__pyx_t_7, 1);
+  __pyx_t_7.memview = NULL;
+  __pyx_t_7.data = NULL;
+  __pyx_r = __pyx_t_6;
+  __pyx_t_6 = 0;
   goto __pyx_L0;
 
   /* "text_utils.pyx":25
@@ -2214,9 +2248,9 @@ __pyx_t_5 = __pyx_memoryview_fromslice(__pyx_t_6, 1, (PyObject *(*)(char *)) __p
   /* function exit code */
   __pyx_L1_error:;
   __Pyx_XDECREF(__pyx_t_1);
-  __Pyx_XDECREF(__pyx_t_4);
   __Pyx_XDECREF(__pyx_t_5);
-  __PYX_XDEC_MEMVIEW(&__pyx_t_6, 1);
+  __Pyx_XDECREF(__pyx_t_6);
+  __PYX_XDEC_MEMVIEW(&__pyx_t_7, 1);
   __Pyx_AddTraceback("text_utils.hash_tokens", __pyx_clineno, __pyx_lineno, __pyx_filename);
   __pyx_r = NULL;
   __pyx_L0:;
