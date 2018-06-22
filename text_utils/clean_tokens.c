@@ -49,6 +49,7 @@ size_t expand_tokens(char *inp, size_t inp_size, char *out_buf, size_t max_outp_
             outp_idx++;
         } else if ((c >= 0x0030 && c <= 0x0039) || /* 0-9 */
                    c == 0x27 || c == 0x2c || /* apostraphe */
+                   c == '&' || c == '#' || c == ';' || /* character entities */
                    (c >= 0x0061 && c <= 0x007A)) { /* a-z */
             in_whitespace = 0;
             out_buf[outp_idx] = c_parts[0];

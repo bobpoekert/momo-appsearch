@@ -24,8 +24,8 @@ english_strings.txt: strings.sstable
 
 english.sent2vec.bin: english_strings.txt
 	../server/sent2vec/fasttext sent2vec -input english_strings.txt -output english.sent2vec \
-		 -minCount 8 -dim 400 -epoch 2 -lr 0.2 -wordNgrams 2 -loss ns -neg 10 \
-		 -thread 18 -t 0.000005 -dropoutK 4 -minCountLabel 20 -bucket 4000000
+		 -minCount 8 -dim 600 -epoch 6 -lr 0.2 -wordNgrams 2 -loss ns -neg 10 \
+		 -thread 19 -t 0.000005 -dropoutK 4 -minCountLabel 20 -bucket 4000000
 
 ambiguity.bin: pairwise_hashes.bin variances.so
 	./ambiguity.py pairwise_hashes.bin translations.bin ambiguity.bin
