@@ -3,6 +3,65 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define IS_UTF8_CHAR_MIDDLE(v) ((v & 0xC0) == 0x80)
+
+size_t utf8_char_len(char *buf, size_t buf_size) {
+    size_t res = 1;
+    while((res < buf_size) && IS_UTF8_CHAR_MIDDLE(buf[res]) && res < 4) res++;
+    return res;
+}
+
+uint32_t utf8_read_char(char *inp, size_t inp_size, size_t *res_length) {
+
+    size_t char_length = utf8_char_len(inp, inp_size);
+    uint32_t c = 0;
+    char *c_parts = (char *) &c;
+    c_parts[0] = inp[0];
+    if (char_length > 1) {
+        c_parts[1] = inp[1];
+        if (char_length > 2) {
+            c_parts[2] = inp[2];
+            if (char_length > 3) {
+                c_parts[3] = inp[3];
+            }
+        }
+    }
+
+    *res_length = char_length;
+    return c;
+}
+
+char is_whitespace(uint32_t utf8_char) {
+    switch(utf8_char) {
+       /*NO-BREAK SPACE*/            case 0xc2a0:
+       /*OGHAM SPACE MARK*/          case 0xe19a80:
+       /*EN QUAD*/                   case 0xe28080:
+       /*EM QUAD*/                   case 0xe28081:
+       /*EN SPACE*/                  case 0xe28082:
+       /*EM SPACE*/                  case 0xe28083:
+       /*THREE-PER-EM SPACE*/        case 0xe28084:
+       /*FOUR-PER-EM SPACE*/         case 0xe28085:
+       /*SIX-PER-EM SPACE*/          case 0xe28086:
+       /*FIGURE SPACE*/              case 0xe28087:
+       /*PUNCTUATION SPACE*/         case 0xe28088:
+       /*THIN SPACE*/                case 0xe28089:
+       /*HAIR SPACE*/                case 0xe2808a:
+       /*ZERO WIDTH SPACE*/          case 0xe2808b:
+       /*NARROW NO-BREAK SPACE*/     case 0xe280af:
+       /*MEDIUM MATHEMATICAL SPACE*/ case 0xe2819f:
+       /*IDEOGRAPHIC SPACE*/         case 0xe38080:
+       /*TAB*/                       case 0x09:
+       /*NUL*/                       case 0x00:
+       /*newline*/                   case 0xa:
+       /*vertical tab*/              case 0xb:
+       /*carriage return*/           case 0xd:
+       /* space */                   case 0x20:
+           return 1;
+        default:
+           return 0;
+    }
+}
+
 size_t expand_tokens(char *inp, size_t inp_size, char *out_buf, size_t max_outp_size) {
 
     size_t inp_idx = 0;
@@ -10,38 +69,11 @@ size_t expand_tokens(char *inp, size_t inp_size, char *out_buf, size_t max_outp_
     char in_whitespace = 0;
 
     while ((inp_idx < inp_size) && (outp_idx < max_outp_size)) {
-        uint32_t c = 0;
+        size_t char_length;
+        uint32_t c = utf8_read_char(&inp[inp_idx], inp_size - inp_idx, &char_length);
+
         char *c_parts = (char *) &c;
-        size_t char_length = 0;
-        if ((inp_size - inp_idx > 4) &&
-            ((inp[inp_idx] & 0xF800) == 0xF000) &&
-            ((inp[inp_idx + 1] & 0xC000) == 0x8000) &&
-            ((inp[inp_idx + 2] & 0xC000) == 0x8000) &&
-            ((inp[inp_idx + 3] & 0xC000) == 0x8000)) {
-            c = *((uint32_t *) (inp + inp_idx));
-            char_length = 4;
-        } else if ((inp_size - inp_idx > 3) &&
-                   ((inp[inp_idx] & 0xF000) == 0xE000) &&
-                   ((inp[inp_idx + 1] & 0xC000) == 0x8000) &&
-                   ((inp[inp_idx + 2] & 0xC000) == 0x8000)) {
-            c_parts[2] = inp[inp_idx];
-            c_parts[1] = inp[inp_idx + 1];
-            c_parts[0] = inp[inp_idx + 2];
-            char_length = 3;
-        } else if ((inp_size - inp_idx > 2) &&
-                    ((inp[inp_idx] & 0xE000) == 0xC000) &&
-                    ((inp[inp_idx + 1] & 0xC000) == 0x8000)) {
-            c_parts[1] = inp[inp_idx];
-            c_parts[0] = inp[inp_idx + 1];
-            char_length = 2;
-        } else if ((inp[inp_idx] & 0x8000) == 0) {
-            c_parts[0] = inp[inp_idx];
-            char_length = 1;
-        } else {
-            return 0; /* invalid char length! should be impossible */
-        }
         inp_idx += char_length;
-        
         
         if ((c >= 0x0041 && c <= 0x005A)) { /* A-Z */
             in_whitespace = 0;
@@ -54,38 +86,14 @@ size_t expand_tokens(char *inp, size_t inp_size, char *out_buf, size_t max_outp_
             in_whitespace = 0;
             out_buf[outp_idx] = c_parts[0];
             outp_idx++;
-        } else if (
-               /*SPACE*/                     c == 0x20||
-               /*NO-BREAK SPACE*/            c == 0xc2a0||
-               /*OGHAM SPACE MARK*/          c == 0xe19a80||
-               /*EN QUAD*/                   c == 0xe28080||
-               /*EM QUAD*/                   c == 0xe28081||
-               /*EN SPACE*/                  c == 0xe28082||
-               /*EM SPACE*/                  c == 0xe28083||
-               /*THREE-PER-EM SPACE*/        c == 0xe28084||
-               /*FOUR-PER-EM SPACE*/         c == 0xe28085||
-               /*SIX-PER-EM SPACE*/          c == 0xe28086||
-               /*FIGURE SPACE*/              c == 0xe28087||
-               /*PUNCTUATION SPACE*/         c == 0xe28088||
-               /*THIN SPACE*/                c == 0xe28089||
-               /*HAIR SPACE*/                c == 0xe2808a||
-               /*ZERO WIDTH SPACE*/          c == 0xe2808b||
-               /*NARROW NO-BREAK SPACE*/     c == 0xe280af||
-               /*MEDIUM MATHEMATICAL SPACE*/ c == 0xe2819f||
-               /*IDEOGRAPHIC SPACE*/         c == 0xe38080||
-               /*TAB*/                       c == 0x09||
-               /*NUL*/                       c == 0x00||
-               /*newline*/                   c == 0xa||
-               /*vertical tab*/              c == 0xb||
-               /*carriage return*/           c == 0xd
-                ){ /* whitespace */
+        } else if (is_whitespace(c)){ /* whitespace */
             if (!in_whitespace) {
                 out_buf[outp_idx] = ' ';
                 outp_idx++;
                 in_whitespace = 1;
             }
         } else { /* punctuation or non-ascii */
-            if (!in_whitespace) {
+            if (!in_whitespace && outp_idx > 0) {
                 out_buf[outp_idx] = ' ';
                 outp_idx++;
             }
@@ -95,9 +103,11 @@ size_t expand_tokens(char *inp, size_t inp_size, char *out_buf, size_t max_outp_
                 outp_idx++;
             }
             if (outp_idx >= max_outp_size) break;
-            out_buf[outp_idx] = ' ';
-            in_whitespace = 1;
-            outp_idx++;
+            if (outp_idx >= max_outp_size - 1) {
+                out_buf[outp_idx] = ' ';
+                in_whitespace = 1;
+                outp_idx++;
+            }
         }
     }
 
@@ -156,7 +166,25 @@ uint64_t hash_bytes( const void * key, size_t len) {
     return h;
 } 
 
-
+size_t hash_tokens(char *instring, size_t instring_length, uint64_t *outp, size_t outp_length) {
+    size_t offset = 0;
+    size_t outp_idx = 0;
+    size_t cur_hash_start = 0;
+    while (offset < instring_length && outp_idx < outp_length) {
+        size_t char_size;
+        uint32_t cur_char = utf8_read_char(&instring[offset], instring_length - offset, &char_size);
+        if (is_whitespace(cur_char) && offset > cur_hash_start) {
+            outp[outp_idx] = hash_bytes(&instring[cur_hash_start], offset - cur_hash_start);
+            outp_idx++;
+        }
+        offset += char_size;
+    }
+    if (offset > cur_hash_start && outp_idx < outp_length) {
+        outp[outp_idx] = hash_bytes(&instring[cur_hash_start], offset - cur_hash_start);
+        outp_idx++;
+    }
+    return outp_idx;
+}
 
 #define HEAP_ROW_SIZE (sizeof(uint64_t) * 2)
 uint64_t heap_insert_counts_uint32(

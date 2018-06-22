@@ -6,3 +6,4 @@ uint64_t heap_insert_counts_uint64(
         uint64_t *heap, size_t n_heap_items, size_t max_heap_items,
         uint64_t new_item);
 uint64_t hash_bytes(char *inp, size_t inp_size);
+size_t hash_tokens(char *instring, size_t instring_length, uint64_t *outp, size_t outp_length);

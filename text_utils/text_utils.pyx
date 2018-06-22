@@ -1,9 +1,9 @@
 from libc.stdint cimport *
 from libc.stdlib cimport malloc, free
+from cython cimport view
 
-cdef extern from "util.h":
-
-    size_t expand_tokens(char *inp, size_t inp_size, char *out_buf, size_t max_outp_size);
+from utils cimport expand_tokens
+from utils cimport hash_tokens as c_hash_tokens
 
 cdef extern from "Python.h":
 
@@ -21,3 +21,14 @@ def clean_tokens(instring):
     res = PyString_FromStringAndSize(res_buffer, res_size)
     free(res_buffer)
     return res
+
+def hash_tokens(instring):
+    cdef bytes py_bytes = instring
+    cdef char *c_bytes = py_bytes
+    cdef size_t inp_size = len(py_bytes)
+
+    cdef uint64_t[:] res_buf = view.array(shape=(inp_size,), itemsize=sizeof(uint64_t), format='Q')
+
+    cdef size_t res_size = c_hash_tokens(c_bytes, inp_size, &res_buf[0], inp_size)
+
+    return res_buf[:res_size]
