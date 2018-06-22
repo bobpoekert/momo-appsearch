@@ -4,16 +4,13 @@ NUMPYINCLUDE := $(shell python -c 'import numpy; print numpy.get_include()')
 
 clean:
 	rm sstable.so
-	rm util.a
-	rm util.o
 
-util.a:
-	gcc -c -g -fPIC -Ofast -Wall -o util.o util.c
-	ar rcs util.a util.o
+../util/util.o:
+	cd ../util && make util.o
 
-sstable.so: util.a
+sstable.so: ../util/util.a
 	cython -o pysstable.c sstable.pyx
-	gcc -g -shared -pthread -L$(PYLIB)/../.. -lpython2.7 -fPIC -fwrapv -Ofast -Wall -fno-strict-aliasing -I$(PYINCLUDE) -I$(NUMPYINCLUDE) -o sstable.so pysstable.c util.a
+	gcc -g -shared -pthread -L$(PYLIB)/../.. -lpython2.7 -fPIC -fwrapv -Ofast -Wall -fno-strict-aliasing -I$(PYINCLUDE) -I$(NUMPYINCLUDE) -I../util -o sstable.so pysstable.c ../util/util.o
 
 test: sstable.so
 	python test.py

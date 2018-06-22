@@ -1,7 +1,7 @@
 from libc.stdint cimport *
 from libc.stdlib cimport malloc, free
 
-cdef extern from "clean_tokens.h":
+cdef extern from "util.h":
 
     size_t expand_tokens(char *inp, size_t inp_size, char *out_buf, size_t max_outp_size);
 

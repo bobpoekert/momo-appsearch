@@ -523,7 +523,7 @@ static CYTHON_INLINE float __PYX_NAN() {
 #include <stdint.h>
 #include <string.h>
 #include <stdlib.h>
-#include "clean_tokens.h"
+#include "util.h"
 #ifdef _OPENMP
 #include <omp.h>
 #endif /* _OPENMP */
