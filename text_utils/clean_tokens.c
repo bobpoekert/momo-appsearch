@@ -37,15 +37,21 @@ size_t expand_tokens(char *inp, size_t inp_size, char *out_buf, size_t max_outp_
         } else if ((inp[inp_idx] & 0x8000) == 0) {
             c_parts[0] = inp[inp_idx];
             char_length = 1;
+        } else {
+            return 0; /* invalid char length! should be impossible */
         }
         inp_idx += char_length;
         
-
-        if ((c >= 0x0030 && c <= 0x0039) || /* 0-9 */
-            (c >= 0x0041 && c <= 0x005A) || /* A-Z */
-            (c >= 0x0061 && c <= 0x007A)) { /* a-z */
+        
+        if ((c >= 0x0041 && c <= 0x005A)) { /* A-Z */
             in_whitespace = 0;
-            out_buf[outp_idx] = c;
+            out_buf[outp_idx] = c_parts[0] + 0x20; /* convert to lowercase */
+            outp_idx++;
+        } else if ((c >= 0x0030 && c <= 0x0039) || /* 0-9 */
+                   c == 0x27 || c == 0x2c || /* apostraphe */
+                   (c >= 0x0061 && c <= 0x007A)) { /* a-z */
+            in_whitespace = 0;
+            out_buf[outp_idx] = c_parts[0];
             outp_idx++;
         } else if (
                /*SPACE*/                     c == 0x20||

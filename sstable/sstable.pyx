@@ -247,7 +247,7 @@ class SSTable(object):
         cursor = self.offsets[idx]
         self.strings.seek(cursor)
         if idx < self.hashes_length - 1:
-            length = self.offsets[idx + 1] - cursor
+            length = self.offsets[int(idx + 1)] - cursor
             return self.strings.read(length)
         else:
             return self.strings.read()

@@ -19,8 +19,16 @@ pairwise_hashes.bin:
 variances.so:
 	cythonize -i variances.pyx
 
+english_strings.txt: strings.sstable
+	python ./english_strings_text_file.py strings.sstable strings.txt.sstable english_strings.txt
+
+english.sent2vec.bin: english_strings.txt
+	../server/sent2vec/fasttext sent2vec -input english_strings.txt -output english.sent2vec \
+		 -minCount 8 -dim 400 -epoch 2 -lr 0.2 -wordNgrams 2 -loss ns -neg 10 \
+		 -thread 18 -t 0.000005 -dropoutK 4 -minCountLabel 20 -bucket 4000000
+
 ambiguity.bin: pairwise_hashes.bin variances.so
 	./ambiguity.py pairwise_hashes.bin translations.bin ambiguity.bin
 
-english.annoy: strings.sstable
-	./word_vectors.py strings.sstable strings.txt.sstable english.annoy
+english.annoy: strings.sstable english.sent2vec.bin
+	./word_vectors.py strings.sstable strings.txt.sstable english.annoy english.sent2vec.bin
