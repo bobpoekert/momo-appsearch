@@ -8,28 +8,37 @@ import sstable
 
 vecs_txt_fname = sys.argv[1]
 hashes_bin_fname = sys.argv[2]
-annoy_index_fname = sys.argv[3]
+hashes_txt_fname = sys.argv[3]
 
-hashes_bin = np.memmap(hashes_bin_fname, dtype=np.uint64)
-n_hashes = hashes_bin.shape[0] / 2
-hashes = hashes_bin[:n_hashes]
-offsets = hashes_bin[n_hashes:]
+hashes = []
+vectors = []
 
-annoy_index = AnnoyIndex(300, metric='angular')
-inf = open(vecs_txt_fname, 'r')
-next(inf) # first line is garbage
+infile = open(vecs_txt_fname, 'r')
+next(infile) # first row is bogus
 
 print 'loading'
-for idx, row in enumerate(inf):
-    row = row.strip()
-    parts = row.split(' ')
-    word = parts[0]
-    vec = map(float, parts[1:])
-    idx = sstable.searchsorted_uint64(hashes, sstable.hash_string(word))
-    annoy_index.add_item(idx, vec)
+for row in infile:
+    cols = row.split(' ')
+    k = cols[0]
+    v = np.array(map(float, cols[1:]), dtype=np.float32)
+    h = sstable.hash_string(k)
+    hashes.append(h)
+    vectors.append(v)
 
-print 'building'
-annoy_index.build(10)
+print 'sorting'
+hashes = np.array(hashes, dtype=np.uint64)
+vectors = np.array(vectors, dtype=np.float32)
+sort_indexes = np.argsort(hashes)
+
+vectors = vectors[sort_indexes]
+hashes = hashes[sort_indexes]
+
+row_size = vectors.shape[1] * np.dtype(np.float32).itemsize
+offsets = np.arange(0, vectors.shape[0] * row_size, row_size, dtype=np.uint64)
+
+print hashes.shape, offsets.shape
+assert hashes.shape == offsets.shape
 
 print 'saving'
-annoy_index.save(annoy_index_fname)
+np.concatenate([hashes, offsets]).astype(np.uint64).tofile(hashes_bin_fname)
+vectors.tofile(hashes_txt_fname)

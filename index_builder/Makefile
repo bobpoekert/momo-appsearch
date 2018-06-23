@@ -1,13 +1,5 @@
 PYINCLUDE := $(shell python -c 'from distutils.sysconfig import get_python_inc; print get_python_inc()')
 
-pymcdb.a:
-	gcc -c -fPIC -I ../utils/mcdb -o pymcdb.o pymcdb.c
-	ar rcs pymcdb.a pymcdb.o
-
-pybuild: pymcdb.a
-	cython -o mcdb.c mcdb.pyx
-	gcc -shared -pthread -fPIC -fwrapv -Ofast -Wall -I$(PYINCLUDE) -o mcdb.so mcdb.c pymcdb.a ../utils/mcdb/libmcdb.a
-
 strings.sstable:
 	gunzip -c strings.gz | \
 		cut -f 3,4 | \
@@ -32,3 +24,6 @@ ambiguity.bin: pairwise_hashes.bin variances.so
 
 english.annoy: strings.sstable english.sent2vec.bin
 	./word_vectors.py strings.sstable strings.txt.sstable english.annoy english.sent2vec.bin
+
+wiki-news-vec.sstable:
+	python ./fasttext_word_vectors.py ./wiki-news-300d-1M-subword.vec ./wiki-news-vec.sstable ./wiki-news-vec.txt.sstable
