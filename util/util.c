@@ -62,6 +62,19 @@ char is_whitespace(uint32_t utf8_char) {
     }
 }
 
+size_t tab_col_split_point(char *instring, size_t inp_size, size_t col_idx) {
+    size_t tab_cnt = 0;
+    for (size_t idx=0; idx < inp_size; idx++) {
+        if (instring[idx] == '\t') {
+            tab_cnt++;
+            if (tab_cnt >= col_idx) {
+                return idx;
+            }
+        }
+    }
+    return inp_size;
+}
+
 size_t expand_tokens(char *inp, size_t inp_size, char *out_buf, size_t max_outp_size) {
 
     size_t inp_idx = 0;
@@ -166,7 +179,11 @@ uint64_t hash_bytes( const void * key, size_t len) {
     return h;
 } 
 
-size_t hash_tokens(char *instring, size_t instring_length, uint64_t *outp, size_t outp_length) {
+size_t hash_tokens(char *instring, size_t instring_length,
+        uint64_t *outp,
+        size_t *token_offsets,
+        size_t *token_lengths,
+        size_t outp_length) {
     size_t offset = 0;
     size_t outp_idx = 0;
     size_t cur_hash_start = 0;
@@ -175,6 +192,8 @@ size_t hash_tokens(char *instring, size_t instring_length, uint64_t *outp, size_
         uint32_t cur_char = utf8_read_char(&instring[offset], instring_length - offset, &char_size);
         if (is_whitespace(cur_char) && offset > cur_hash_start) {
             outp[outp_idx] = hash_bytes(&instring[cur_hash_start], offset - cur_hash_start);
+            token_offsets[outp_idx] = cur_hash_start;
+            token_lenghts[outp_idx] = offset - cur_hash_start;
             outp_idx++;
             cur_hash_start = offset + char_size;
         }

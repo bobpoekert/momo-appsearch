@@ -252,6 +252,19 @@ class SSTable(object):
         else:
             return self.strings.read()
 
+    def getall(self, hashes):
+        cdef np.ndarray[np.uint64_t, ndim=1] hash_arr = hashes
+        cdef np.ndarray[np.int, ndim=1] res = np.zeros(idx_arr.shape[0], dtype=np.int)
+
+        for idx in range(hashes.shape[0]):
+            hash_idx = searchsorted_uint64(self.hashes, hash_arr[idx])
+            if hash_idx is None:
+                res[idx] = -1
+            else:
+                res[idx] = hash_idx
+
+        return res
+
     def raw_itervalues(self):
         idx = 0
         while idx < self.hashes_length:
