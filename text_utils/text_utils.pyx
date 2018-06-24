@@ -36,7 +36,7 @@ def clean_token_list(rows):
     cdef object res = PyTuple_New(n_rows)
 
     cdef char *c_bytes
-    cdef char *res_buffer = malloc(4096)
+    cdef char *res_buffer = <char *> malloc(4096)
     cdef size_t res_buffer_size = 4096
     cdef object row
     cdef size_t row_size
@@ -48,7 +48,7 @@ def clean_token_list(rows):
             c_bytes = row
             row_size = PyString_Size(row)
             if row_size * 2 > res_buffer_size:
-                res_buffer = realloc(res_buffer, row_size * 2)
+                res_buffer = <char *> realloc(res_buffer, row_size * 2)
                 res_buffer_size = row_size * 2
             expanded_size = expand_tokens(
                     c_bytes, row_size, res_buffer, res_buffer_size)
@@ -70,7 +70,7 @@ def hash_tokens(instring):
 
     cdef size_t res_size = c_hash_tokens(
             c_bytes, inp_size,
-            &res_buf[0], &res_offsets[0], &res_lengths[0]
+            &res_buf[0], &res_offsets[0], &res_lengths[0],
             inp_size)
 
     return (res_buf[:res_size], np.transpose(res_offsets[:res_size], res_lengths[:res_size]))
@@ -103,10 +103,10 @@ def contains_sorted(np.ndarray sorted_arr, np.ndarray inp_arr):
     return res
 
 
-def read_tab_groups(inf, tab_split_point):
+def read_tab_groups(infobj, tab_split_point):
     "returns squence of (key, key_hash, values)"
 
-    cdef char *line_buf = malloc(1024)
+    cdef char *line_buf = <char *> malloc(1024)
     cdef size_t line_buf_size = 1024
 
     cdef FILE *inf
@@ -119,7 +119,7 @@ def read_tab_groups(inf, tab_split_point):
     cdef size_t current_split_point
 
     try:
-        inf = fdopen(inf.fileno(), "r")
+        inf = fdopen(infobj.fileno(), "r")
         try:
             while 1:
                 current_line_size = getline(&line_buf, &line_buf_size, inf)
@@ -130,24 +130,25 @@ def read_tab_groups(inf, tab_split_point):
                 current_split_point = tab_col_split_point(
                         line_buf, current_line_size, 2)
                 cur_key_hash = hash_bytes(
-                        &line_buf[tab_col_split_point],
-                        current_line_size - tab_col_split_point)
+                        &line_buf[current_split_point],
+                        current_line_size - current_split_point)
 
                 current_val = PyString_FromStringAndSize(
-                        &line_buf[tab_col_split_point]
-                        current_line_size - tab_col_split_point)
+                        &line_buf[current_split_point],
+                        current_line_size - current_split_point)
 
-                if cur_hash != prev_hash:
+                if cur_key_hash != prev_key_hash:
                     if PyList_Size(current_val_list) > 0:
                         yield (current_key, prev_key_hash, current_val_list)
                     current_val_list = []
                     current_key = PyString_FromStringAndSize(
-                            line_buf, tab_col_split_point)
+                            line_buf, current_split_point)
 
-                PyList_Append(current_val)
+                PyList_Append(current_val_list, current_val)
 
             if PyList_Size(current_val_list) > 0:
                 yield (current_key, prev_key_hash, current_val_list)
+                current_val_list = []
 
         finally:
             fclose(inf)

@@ -193,7 +193,7 @@ size_t hash_tokens(char *instring, size_t instring_length,
         if (is_whitespace(cur_char) && offset > cur_hash_start) {
             outp[outp_idx] = hash_bytes(&instring[cur_hash_start], offset - cur_hash_start);
             token_offsets[outp_idx] = cur_hash_start;
-            token_lenghts[outp_idx] = offset - cur_hash_start;
+            token_lengths[outp_idx] = offset - cur_hash_start;
             outp_idx++;
             cur_hash_start = offset + char_size;
         }
