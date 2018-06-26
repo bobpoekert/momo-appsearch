@@ -29,15 +29,16 @@ class CleanTokensText(ut.TestCase):
 class HashTokensTest(ut.TestCase):
 
     def test_empty_string(self):
-        self.assertEqual(list(tu.hash_tokens('')), [])
+        self.assertEqual(list(tu.hash_tokens('')), [[],[]])
 
     def test_random_strings(self):
-        for i in xrange(100):
+        for i in xrange(1000):
             n_tokens = random.randint(0, 1024)
             tokens = [random_string() for i in xrange(n_tokens)]
             target_hashes = map(hash_string, tokens)
             big_string = ' '.join(tokens)
-            res_hashes = list(tu.hash_tokens(big_string))
+            res_hashes, res_offsets = tu.hash_tokens(big_string)
+            res_hashes = list(res_hashes)
             self.assertEqual(len(target_hashes), len(res_hashes))
             for i, (a, b) in enumerate(izip(target_hashes, res_hashes)):
                 self.assertEqual(a, b, msg='%d: %d != %d' % (i, a, b))

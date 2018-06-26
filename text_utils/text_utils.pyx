@@ -62,18 +62,19 @@ def hash_tokens(instring):
     cdef size_t inp_size = len(py_bytes)
 
     if inp_size < 1:
-        return []
+        return [[], []]
 
-    cdef uint64_t[:] res_buf = view.array(shape=(inp_size,), itemsize=sizeof(uint64_t), format='Q')
-    cdef size_t[:] res_offsets = view.array(shape=(inp_size,), itemsize=sizeof(size_t), format='i')
-    cdef size_t[:] res_lengths = view.array(shape=(inp_size,), itemsize=sizeof(size_t), format='i')
+    cdef np.ndarray[np.uint64_t, ndim=1] res_buf = np.zeros((inp_size,), dtype=np.uint64)
+    cdef np.ndarray[np.uint64_t, ndim=1] res_offsets = np.zeros((inp_size,), dtype=np.uint64)
+    cdef np.ndarray[np.uint64_t, ndim=1] res_lengths = np.zeros((inp_size,), dtype=np.uint64)
+
 
     cdef size_t res_size = c_hash_tokens(
             c_bytes, inp_size,
-            &res_buf[0], &res_offsets[0], &res_lengths[0],
+            &res_buf[0], <size_t *> &res_offsets[0], <size_t *> &res_lengths[0],
             inp_size)
 
-    return (res_buf[:res_size], np.transpose(res_offsets[:res_size], res_lengths[:res_size]))
+    return (res_buf[:res_size], np.transpose((res_offsets[:res_size], res_lengths[:res_size])))
 
 def contains_sorted(np.ndarray sorted_arr, np.ndarray inp_arr):
     cdef size_t inp_size = inp_arr.shape[0]

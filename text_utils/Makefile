@@ -11,3 +11,6 @@ clean:
 text_utils.so: ../util/util.o
 	cython -o text_utils.c text_utils.pyx
 	gcc -g -shared -pthread -L$(PYLIB)/../.. -lpython2.7 -fPIC -fwrapv -Ofast -Wall -fno-strict-aliasing -I$(PYINCLUDE) -I$(NUMPYINCLUDE) -I ../util -o text_utils.so text_utils.c ../util/util.o
+
+test: text_utils.so
+	python test.py
