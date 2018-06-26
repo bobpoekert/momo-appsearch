@@ -68,60 +68,10 @@ def hash_tokens(v):
 def run():
     with open(sys.argv[3], 'w') as cleaned_hashes_table:
         for key, key_hash, vals in read_tab_groups(sys.stdin):
+            cleaned_vals = text_utils.substitute_propernames(vals)
 
-            cleaned_vals = clean_token_list(vals, 1)
+            for v in cleaned_vals:
+                print '%s\t%s' % (key, v)
 
-            if len(cleaned_vals) == 0:
-                continue
-
-            if len(cleaned_vals) < 2:
-                print '%s\t%s' % (key, cleaned_vals[0])
-                continue
-
-            token_hashes_and_offsets = map(hash_tokens, cleaned_vals)
-
-            done = False
-            for k in token_hashes_and_offsets:
-                if k is None:
-                    for v in cleaned_vals:
-                        print '%s\t%s' % (key, v)
-                    done = True
-                    break
-            if done == True:
-                continue
-
-            token_hashes = [np.array(v[0]) for v in token_hashes_and_offsets]
-            token_offsets = [v[1] for v in token_hashes_and_offsets]
-
-            all_row_hashes = reduce(np.intersect1d, token_hashes)
-
-            if len(all_row_hashes) < 1:
-                for v in cleaned_vals:
-                    print '%s\t%s' % (key, v)
-            elif len(all_row_hashes) == len(token_hashes):
-                # virbatim copy in all languages, not useful for parallel string corpus
-                continue
-            else:
-                #propername_hashes = all_row_hashes[dictionary.getall(all_row_hashes) < 1]
-                propername_hashes = all_row_hashes
-                propername_hashes = np.sort(propername_hashes)
-
-                propername_masks = [contains_sorted(propername_hashes, v) for v in token_hashes]
-                propername_offsets = [a[b] for a, b in zip(token_offsets, propername_masks)]
-                replaced_hashes = [a[b] for a, b in zip(token_hashes, propername_masks)]
-
-                replacers = ['$$propername%d$$' % i for i in range(propername_hashes.shape[0])]
-
-                for idx, v in enumerate(cleaned_vals):
-                    offset_delta = 0
-                    for (start, length), h in zip(propername_offsets[idx], replaced_hashes[idx]):
-                        if length > 1:
-                            start = int(start)
-                            length = int(length)
-                            replacer = replacers[np.searchsorted(propername_hashes, h)]
-                            start += offset_delta
-                            v = v[:start] + replacer + v[(start + length):]
-                            offset_delta += (len(replacer) - length)
-                    print '%s\t%s' % (key, str(v))
             for a, b in zip(cleaned_vals, vals):
                 cleaned_hashes_table.write(struct.pack('QQ', sstable.hash_string(a), sstable.hash_string(b)))
