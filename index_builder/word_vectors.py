@@ -12,6 +12,20 @@ import sstable
 sys.path.append('../text_utils')
 import text_utils as tt
 
+import unicodedata as ud
+
+latin_letters= {}
+
+def is_latin(uchr):
+    try: return latin_letters[uchr]
+    except KeyError:
+         return latin_letters.setdefault(uchr, 'LATIN' in ud.name(uchr))
+
+def only_roman_chars(unistr):
+    return all(is_latin(uchr)
+           for uchr in unistr
+           if uchr.isalpha()) # isalpha suggested by John Machin
+
 if __name__ == '__main__':
     import sys
 
@@ -27,15 +41,21 @@ if __name__ == '__main__':
     seen_strings = set([])
     for idx, v in enumerate(sstable.SSTable(sys.argv[1], sys.argv[2]).raw_itervalues()):
         try:
+            if len(v) < 1:
+                continue
             if v[0] == '-' and not v.startswith('-en'):
                 continue
-            v = v.split('\t')[1]
-            v = tt.clean_tokens(v)
+            try:
+                v = v.split('\t', 1)[1]
+            except:
+                continue
+            if not only_roman_chars(v.decode('utf-8')):
+                continue
             if v in seen_strings:
                 continue
             seen_strings.add(v)
             try:
-                string_batch.append(v)
+                string_batch.append(v.decode('utf-8'))
                 index_batch.append(idx)
             except:
                 print repr(v)

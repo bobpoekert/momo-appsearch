@@ -10,7 +10,7 @@ dictionary = sstable.SSTable('???', '???')
 
 import struct
 
-with open(sys.argv[1], 'w') as cleaned_hashes_table:
+with open('%s.tmp' % sys.argv[1], 'w') as cleaned_hashes_table:
 
     for key, key_hash, vals in text_utils.read_tab_groups(sys.stdin, 2):
         cleaned_vals = text_utils.clean_token_list(vals)
@@ -38,3 +38,8 @@ with open(sys.argv[1], 'w') as cleaned_hashes_table:
 
         for v1, v2 in zip(vals, cleaned_vals):
             cleaned_hashes_table.write(struct.pack('QQ', (sstable.hash_string(v1), sstable.hash_string(v2))))
+
+table = np.memmap('%s.tmp' % sys.argv[1], dtype=np.uint64).reshape((-1, 2))
+indexes = np.argsort(table[:, 0])
+np.concatenate([table[indexes, 0], table[indexes, 1]]).astype(np.uint64).tofile(sys.argv[1])
+os.unlink('%s.tmp', sys.argv[1])

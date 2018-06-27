@@ -254,7 +254,7 @@ class SSTable(object):
 
     def getall(self, hashes):
         cdef np.ndarray[np.uint64_t, ndim=1] hash_arr = hashes
-        cdef np.ndarray[np.int, ndim=1] res = np.zeros(idx_arr.shape[0], dtype=np.int)
+        cdef np.ndarray[np.int, ndim=1] res = np.zeros(hash_arr.shape[0], dtype=np.int)
 
         for idx in range(hashes.shape[0]):
             hash_idx = searchsorted_uint64(self.hashes, hash_arr[idx])

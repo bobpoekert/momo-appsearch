@@ -8,7 +8,7 @@ clean:
 ../util/util.o:
 	cd ../util && make util.o
 
-sstable.so: ../util/util.a
+sstable.so: ../util/util.o
 	cython -o pysstable.c sstable.pyx
 	gcc -g -shared -pthread -L$(PYLIB)/../.. -lpython2.7 -fPIC -fwrapv -Ofast -Wall -fno-strict-aliasing -I$(PYINCLUDE) -I$(NUMPYINCLUDE) -I../util -o sstable.so pysstable.c ../util/util.o
 

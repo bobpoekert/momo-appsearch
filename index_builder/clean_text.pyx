@@ -11,8 +11,7 @@ dictionary = sstable.SSTable(sys.argv[1], sys.argv[2])
 import struct
 
 def read_tab_groups(inf):
-    return text_utils.read_tab_groups(inf, 2)
-    '''
+    #return text_utils.read_tab_groups(inf, 2)
     current_key = None
     current_val_list = []
     for row in inf:
@@ -27,7 +26,6 @@ def read_tab_groups(inf):
             current_val_list = [v]
 
     yield (current_key, current_val_list)
-    '''
 
 def clean_token_list(rows, colid):
     res = []
@@ -67,7 +65,7 @@ def hash_tokens(v):
 
 def run():
     with open(sys.argv[3], 'w') as cleaned_hashes_table:
-        for key, key_hash, vals in read_tab_groups(sys.stdin):
+        for key, vals in read_tab_groups(sys.stdin):
             cleaned_vals = text_utils.substitute_propernames(vals)
 
             for v in cleaned_vals:
