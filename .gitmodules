@@ -1,6 +1,3 @@
-[submodule "utils/mcdb"]
-	path = utils/mcdb
-	url = git@github.com:gstrauss/mcdb.git
 [submodule "server/sent2vec"]
 	path = server/sent2vec
 	url = git@github.com:epfml/sent2vec.git
