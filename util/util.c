@@ -311,6 +311,8 @@ void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname) {
     FILE *strings_f;
     FILE *inp_f;
 
+    size_t line_cnt = 0;
+
     inp_f = fdopen(inp_fd, "r");
     hashes_f = fopen(hashes_fname, "w");
     strings_f = fopen(strings_fname, "w");
@@ -327,7 +329,15 @@ void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname) {
 
     while(1) {
         line_size = getline(&current_line, &buffer_size, inp_f);
-        if (line_size < 0) break;
+        if (line_size < 0) {
+            if (feof(inp_f)) {
+                printf("eof %d\n", line_cnt);
+                break;
+            } else {
+                continue;
+            }
+        }
+        line_cnt++;
         if (line_size < 1) continue;
         if (line_size > 100000) continue;
         line_size--; /* strip trailing newline */
@@ -345,16 +355,18 @@ void hashes_from_fd(int inp_fd, char *hashes_fname, char *strings_fname) {
                 heap, heap_size, CACHE_HEAP_SIZE,
                 current_hash);
 
+#define WRITE(outf,v,size) if (fwrite(v, size, 1, outf) < 0) { perror("write failed: "); break; }
+
         if (heap_insert_res < 1) {
 
 
-            if (fwrite(&current_hash, sizeof(current_hash), 1, hashes_f) < 1) break;
-            if (fwrite(&current_strings_offset, sizeof(current_strings_offset), 1, hashes_f) < 1) break;
+            WRITE(hashes_f, &current_hash, sizeof(current_hash))
+            WRITE(hashes_f, &current_strings_offset, sizeof(current_strings_offset))
             
-            outp_line_size = line_size;
-            if (fwrite(&outp_line_size, sizeof(outp_line_size), 1, strings_f) < 1) break;
+            outp_line_size = line_size; /* convert to unsigned */
+            WRITE(strings_f, &outp_line_size, sizeof(outp_line_size))
             current_strings_offset += sizeof(outp_line_size);
-            if (fwrite(current_line, line_size, 1, strings_f) < 1) break;
+            WRITE(strings_f, current_line, line_size)
             current_strings_offset += line_size;
 
         }

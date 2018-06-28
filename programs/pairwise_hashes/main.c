@@ -7,7 +7,10 @@
 #define MIN(a,b) (a > b ? b : a)
 #define MAX(a,b) (a > b ? a : b)
 
-#define ASSERT(v, msg) if (!(v)) { printf(msg); abort(); }
+#define likely(x)       __builtin_expect((x),1)
+#define unlikely(x)     __builtin_expect((x),0)
+
+#define ASSERT(v, msg) if (unlikely(!(v))) { printf(msg); abort(); }
 
 typedef struct TreeNode {
 
@@ -77,11 +80,18 @@ TreeNode *TreeNode_alloc(Tree *tree) {
 }
 
 int TreeNode_hash_compare(TreeNode *node, uint64_t key_left, uint64_t key_right) {
-    int diff = node->key_left - key_left;
-    if (diff == 0) {
-        return node->key_right - key_right;
+    if (key_left == node->key_left) {
+        if (node->key_right == key_right) {
+            return 0;
+        } else if (node->key_right < key_right) {
+            return 1;
+        } else {
+            return -1;
+        }
+    } else if (node->key_left < key_left) {
+        return 1;
     } else {
-        return diff;
+        return -1;
     }
 }
 
@@ -190,7 +200,7 @@ int main(int argc, char **argv) {
     uint64_t current_key_hash;
     uint64_t prev_key_hash = 0;
     uint64_t current_val_hash;
-    uint64_t *current_val_hashes = malloc(40960 * sizeof(uint64_t));
+    uint64_t *current_val_hashes = malloc(TREE_CHUNK_SIZE * sizeof(uint64_t));
     size_t current_val_hashes_idx = 0;
 
     char *current_line = (char *) malloc(1024);
@@ -209,6 +219,8 @@ int main(int argc, char **argv) {
             }
         }
 
+        current_line_size--; /* strip trailing newline */
+
         row_idx++;
         if (row_idx % 10000 == 0) {
             printf("%lu %lu\n", row_idx, tree->n_nodes);
@@ -220,7 +232,7 @@ int main(int argc, char **argv) {
                 current_line + current_key_split_point,
                 current_line_size - current_key_split_point);
 
-        if (current_key_hash == prev_key_hash) {
+        if (current_key_hash == prev_key_hash && current_val_hashes_idx < TREE_CHUNK_SIZE) {
             current_val_hashes[current_val_hashes_idx++] = current_val_hash;
 
         } else {
