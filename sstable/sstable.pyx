@@ -1,5 +1,5 @@
 from libc.stdint cimport *
-from libc.stdio cimport fopen, fdopen, fread, fclose, fwrite, FILE, ferror, perror, feof, fseek, SEEK_SET, getline, SEEK_CUR, ftell
+from libc.stdio cimport fopen, fdopen, fread, fclose, fwrite, FILE, ferror, perror, feof, fseek, SEEK_SET, getline, SEEK_CUR, ftell, fflush
 from libc.stdlib cimport malloc, free, realloc
 from libc.string cimport strerror
 import os
@@ -170,57 +170,40 @@ def build_index(infile, hashes_tempname, hashes_outname, strings_tempname, strin
     np.concatenate((outp_hashes, outp_offsets)).tofile(hashes_outname)
 
 
-def build_mat_index(_hashes, _values, _hashes_fname, _strings_fname):
+def build_mat_index(_hashes, _values, _hashes_file, _strings_file):
     """
-    takes an array of hashes and a matrix with the same height of values
+    takes a sorted array of hashes and a matrix with the same height of values
     and generates an sstable index of hashes -> matrix rows
     """
     cdef np.ndarray[np.uint64_t, ndim=1] hashes = _hashes
-    cdef np.ndarray[long, ndim=1] sort_indexes = np.argsort(hashes)
+    cdef size_t n_hashes = _hashes.shape[0]
+    cdef np.ndarray[np.uint64_t, ndim=1] values = _values
+    cdef size_t value_dsize = _values.itemsize
 
-    cdef np.ndarray[np.uint64_t, ndim=1] sorted_hashes = hashes[sort_indexes]
-    cdef np.ndarray sorted_values = _values[sort_indexes]
+    cdef np.ndarray[np.uint64_t, ndim=1] offsets = np.zeros((n_hashes,), dtype=np.uint64)
 
-    cdef char *hashes_fname = _hashes_fname
-    cdef char *strings_fname = _strings_fname
-    cdef size_t n_rows = _hashes.shape[0]
+    cdef size_t inp_idx = 1
+    cdef size_t offset_idx = 0
 
-    cdef size_t row_idx = 0
-    cdef uint64_t current_hash
-    cdef uint64_t prev_hash = 0
-    cdef size_t hash_idx = 0
-    cdef uint64_t current_offset = 0
-    cdef np.ndarray[np.uint64_t, ndim=1] offsets = np.zeros((n_rows,), dtype=np.uint64)
-    cdef np.ndarray[np.uint64_t, ndim=1] uniq_hashes = np.zeros((n_rows,), dtype=np.uint64)
-    cdef np.ndarray row
-    cdef uint64_t[::1] row_buf
-    cdef size_t row_size
+    cdef uint64_t prev_hash = hashes[0]
+    cdef uint64_t cur_hash
+    cdef uint64_t cur_offset = 0
 
-    cdef FILE *strings_outf = fopen(strings_fname, "w")
-    try:
-        while row_idx < n_rows:
-            current_hash = sorted_hashes[row_idx]
-            if current_hash != prev_hash:
-                uniq_hashes[hash_idx] = prev_hash
-                offsets[hash_idx] = current_offset
-                hash_idx += 1
-            row = sorted_values[row_idx]
-            if not row.flags['C_CONTIGUOUS']:
-                row = np.ascontiguousarray(row)
-            row_buf = row
-            row_size = row.size
-            fwrite(&row_buf[0], sizeof(uint64_t), row_size, strings_outf)
-            current_offset += row_size
-            row_idx += 1
-            prev_hash = current_hash
+    cdef FILE *strings_f = fdopen(_strings_file.fileno(), "w")
 
-        uniq_hashes[hash_idx] = prev_hash
-        offsets[hash_idx] = current_offset
-    finally:
-        fclose(strings_outf)
+    while inp_idx < n_hashes:
+        cur_hash = hashes[inp_idx]
+        if cur_hash != prev_hash:
+            offsets[offset_idx] = cur_offset
+            offset_idx += 1
+        fwrite(&values[inp_idx], value_dsize, 1, strings_f)
 
-    np.concatenate((uniq_hashes[:hash_idx], offsets[:hash_idx])).tofile(_strings_fname)
+        inp_idx += 1
 
+    fflush(strings_f)
+
+    _hashes.tofile(_hashes_file)
+    offsets.tofile(_hashes_file)
 
 class SSTable(object):
 

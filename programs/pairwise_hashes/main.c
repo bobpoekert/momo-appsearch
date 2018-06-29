@@ -12,6 +12,10 @@
 
 #define ASSERT(v, msg) if (unlikely(!(v))) { printf(msg); abort(); }
 
+#define TREE_CHUNK_SIZE 4096000
+#define VAL_GROUP_SIZE 40960
+
+
 typedef struct TreeNode {
 
     uint64_t key_left;
@@ -21,8 +25,6 @@ typedef struct TreeNode {
     struct TreeNode *right;
 
 } TreeNode;
-
-#define TREE_CHUNK_SIZE 409600
 
 typedef struct TreeChunk {
 
@@ -200,7 +202,7 @@ int main(int argc, char **argv) {
     uint64_t current_key_hash;
     uint64_t prev_key_hash = 0;
     uint64_t current_val_hash;
-    uint64_t *current_val_hashes = malloc(TREE_CHUNK_SIZE * sizeof(uint64_t));
+    uint64_t *current_val_hashes = malloc(VAL_GROUP_SIZE * sizeof(uint64_t));
     size_t current_val_hashes_idx = 0;
 
     char *current_line = (char *) malloc(1024);
@@ -232,7 +234,7 @@ int main(int argc, char **argv) {
                 current_line + current_key_split_point,
                 current_line_size - current_key_split_point);
 
-        if (current_key_hash == prev_key_hash && current_val_hashes_idx < TREE_CHUNK_SIZE) {
+        if (current_key_hash == prev_key_hash && current_val_hashes_idx < VAL_GROUP_SIZE) {
             current_val_hashes[current_val_hashes_idx++] = current_val_hash;
 
         } else {
@@ -245,7 +247,8 @@ int main(int argc, char **argv) {
 
                     if (v_left == v_right) continue;
 
-                    TreeNode_increment(tree, MIN(v_left, v_right), MAX(v_left, v_right), 1);
+                    TreeNode_increment(tree, v_left, v_right, 1);
+                    TreeNode_increment(tree, v_right, v_left, 1);
 
                 }
 

@@ -1,57 +1,87 @@
 import numpy as np
+cimport numpy as np
 
-def variances(int n_uniq, unsigned int[:] keys, double[:] counts):
-    cdef double[:] res = np.zeros(n_uniq)
-    cdef unsigned long [:] res_counts = np.zeros(n_uniq, dtype=np.uint64)
-    cdef double [:] sums = np.zeros(n_uniq, dtype=np.float64)
-    cdef double [:] sums_squares = np.zeros(n_uniq, dtype=np.float64)
-    cdef double [:] translation_probs = np.zeros(keys.shape[0], dtype=np.float64)
+from libc.stdio cimport fdopen, fclose, FILE, fwrite, fflush
+from libc.stdint cimport *
 
-    cdef unsigned int res_idx = 0
-    cdef unsigned int count = 1
-    cdef double _sum = counts[0]
-    cdef double sum_squares = _sum * _sum
-    cdef unsigned int prev_k = keys[0]
-    cdef unsigned int k
-    cdef double v
-    cdef unsigned int i = 1
-    cdef unsigned int j = 0
-    cdef unsigned int max_i = keys.shape[0]
-    cdef double mean
+def variances(_mat):
+    cdef np.ndarray[np.uint64_t, ndim=2] mat = _mat
+    cdef uint64_t mat_size = _mat.shape[0]
+    cdef np.ndarray[np.uint64_t, ndim=1] keys = np.zeros((mat_size,), dtype=np.uint64)
+    cdef np.ndarray[np.float64_t, ndim=1] vals = np.zeros((mat_size,), dtype=np.float64)
 
-    cdef unsigned int translation_start_idx = 0
-    cdef unsigned int translation_probs_idx = 0
+    cdef uint64_t prev_hash = 0
+    cdef uint64_t cur_hash
+    cdef uint64_t res_idx = 0
+    cdef uint64_t idx = 0
 
-    while i < max_i:
-        k = keys[i]
-        v = counts[i]
-        if k == prev_k:
-            _sum += v
-            sum_squares += v * v
-            count += 1
-        else:
-            mean = _sum / count
-            res[res_idx] = (sum_squares / count) - (mean * mean)
-            res_counts[res_idx] = count
-            sums[res_idx] = _sum
-            sums_squares[res_idx] = _sum * _sum
+    cdef uint64_t cur_val
+    cdef uint64_t cur_sum = 0
+    cdef uint64_t cur_sum_squares = 0
+    cdef uint64_t cur_count = 0
+    cdef double cur_mean
 
-            j = translation_start_idx
-            while j < i:
-                if _sum > 0:
-                    translation_probs[j] = counts[j] / _sum
-                j += 1
+    prev_hash = mat[0, 0]
+    cur_sum = mat[0, 1]
+    cur_sum_squares = cur_sum * cur_sum
+    cur_count = 1
+    idx = 1
 
-            res_idx += 1
-            count = 1
-            _sum = v
-            sum_squares = v * v
-            prev_k = k
-            translation_start_idx = i
-        i += 1
-    mean = _sum / <double> count
-    res[res_idx] = (sum_squares / <double> count) - (mean * mean)
-    res_counts[res_idx] = count
-    sums[res_idx] = _sum
-    sums_squares[res_idx] = _sum * _sum
-    return np.array(res), np.array(res_counts), np.array(sums), np.array(sums_squares), np.array(translation_probs)
+    while idx < mat_size:
+        cur_hash = mat[idx, 0]
+        cur_val = mat[idx, 2]
+        if cur_hash != prev_hash:
+            cur_mean = cur_sum / cur_count
+            vals[res_idx] = (cur_sum_squares / cur_count) - (cur_mean * cur_mean)
+            keys[res_idx] = prev_hash
+            cur_sum = 0
+            cur_sum_squares = 0
+            cur_count = 0
+
+        cur_sum += cur_val
+        cur_sum_squares += cur_val * cur_val
+        cur_count += 1
+
+        idx += 1
+
+
+    cur_mean = cur_sum / cur_count
+    vals[res_idx] = (cur_sum_squares / cur_count) - (cur_mean * cur_mean)
+    keys[res_idx] = prev_hash
+
+    return (keys[:res_idx], vals[:res_idx])
+
+def write_translation_index(_mat, _outf, _idx_outf):
+    cdef np.ndarray[np.uint64_t, ndim=2] mat = _mat
+    cdef uint64_t mat_size = _mat.shape[0]
+    cdef np.ndarray[uint64_t, ndim=1] offsets = np.zeros((mat_size,), dtype=np.uint64)
+    cdef uint64_t idx = 0
+    cdef uint64_t res_idx = 1
+    cdef uint64_t byte_offset = 0
+
+    cdef FILE *outf = fdopen(_outf.fileno(), "w")
+    cdef uint64_t outbuf[2]
+
+    cdef uint64_t cur_key
+    cdef uint64_t prev_key
+
+    try:
+        cur_key = mat[0, 0]
+
+        while idx < mat_size:
+            cur_key = mat[idx, 0]
+            if cur_key != prev_key:
+                offsets[res_idx] = byte_offset
+                res_idx += 1
+
+            outbuf[0] = mat[idx, 1]
+            outbuf[1] = mat[idx, 2]
+            fwrite(&outbuf[0], sizeof(uint64_t), 3, outf)
+            byte_offset += sizeof(uint64_t) * 3
+
+            idx += 1
+
+        mat[:, 0].tofile(_idx_outf)
+        offsets.tofile(_idx_outf)
+    finally:
+        fflush(outf)
