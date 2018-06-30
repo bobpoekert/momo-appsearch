@@ -34,6 +34,7 @@ def variances(_mat):
             cur_mean = cur_sum / cur_count
             vals[res_idx] = (cur_sum_squares / cur_count) - (cur_mean * cur_mean)
             keys[res_idx] = prev_hash
+            res_idx += 1
             cur_sum = 0
             cur_sum_squares = 0
             cur_count = 0

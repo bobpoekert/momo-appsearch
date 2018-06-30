@@ -48,28 +48,28 @@ def contains_sorted(sorted_arr, target):
 
 def hash_tokens(v):
     try:
-        k, v2 = v.split('\t', 1)
-    except ValueError:
-        v2 = v
-        k = ''
-    try:
-        hashes, offsets = text_utils.hash_tokens(v2)
+        hashes, offsets = text_utils.hash_tokens(v)
     except ValueError:
         return None
     hashes = np.array(hashes)
     mask = offsets[:, 1] > 0
     hashes = hashes[mask]
     offsets = offsets[mask]
-    offsets[:, 0] += len(k) + 1
     return (hashes, offsets)
 
-def run():
-    with open(sys.argv[3], 'w') as cleaned_hashes_table:
-        for key, vals in read_tab_groups(sys.stdin):
-            cleaned_vals = text_utils.substitute_propernames(vals)
+def run(inf, outf, cleaned_hashes_table, max_bytes):
+    for key, vals in read_tab_groups(inf):
+        cleaned_vals = text_utils.substitute_propernames(vals)
 
-            for v in cleaned_vals:
-                print '%s\t%s' % (key, v)
+        for v in cleaned_vals:
+            outf.write('%s\t%s\n' % (key, v))
 
-            for a, b in zip(cleaned_vals, vals):
-                cleaned_hashes_table.write(struct.pack('QQ', sstable.hash_string(a), sstable.hash_string(b)))
+        for a, b in zip(cleaned_vals, vals):
+            cleaned_hashes_table.write(struct.pack('QQ', sstable.hash_string(a), sstable.hash_string(b)))
+
+        if key is not None:
+            max_bytes -= sum(map(len, vals))
+            max_bytes -= len(key) * len(vals)
+            max_bytes -= len(vals) * 2
+            if max_bytes < 1:
+                break

@@ -184,9 +184,10 @@ size_t hash_tokens(char *instring, size_t instring_length,
         size_t *token_offsets,
         size_t *token_lengths,
         size_t outp_length) {
-    size_t offset = 0;
     size_t outp_idx = 0;
     size_t cur_hash_start = 0;
+    size_t split_point = tab_col_split_point(instring, instring_length, 1);
+    size_t offset = split_point;
     while (offset < instring_length && outp_idx < outp_length) {
         size_t char_size;
         uint32_t cur_char = utf8_read_char(&instring[offset], instring_length - offset, &char_size);
