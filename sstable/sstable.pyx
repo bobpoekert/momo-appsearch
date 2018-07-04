@@ -3,6 +3,8 @@ from libc.stdio cimport fopen, fdopen, fread, fclose, fwrite, FILE, ferror, perr
 from libc.stdlib cimport malloc, free, realloc
 from libc.string cimport strerror
 import os
+from multiprocessing import cpu_count
+import threading
 
 cdef extern from "stdio.h":
     ssize_t getdelim(char **lineptr, size_t *n, int delim, FILE *stream)
@@ -67,25 +69,26 @@ def searchsorted_uint64(_inp, _target):
     cdef np.ndarray[uint64_t, ndim=1] inp = _inp
     cdef uint64_t target = _target
     cdef uint64_t size = _inp.shape[0]
-    cdef uint64_t right = size
+    cdef uint64_t right = size - 1
     cdef uint64_t left = 0
     cdef uint64_t pivot
     cdef uint64_t pivot_idx
 
-    if target < inp[0] or target > inp[size - 1]:
+    if target < inp[left] or target > inp[right]:
         return None
 
-    while right > left:
-        pivot_idx = left + (right - left) / 2
+    while left <= right:
+        pivot_idx = (left + right) / 2
         pivot = inp[pivot_idx]
-        if pivot == target:
-            return pivot_idx
+        if pivot < target:
+            left = pivot_idx + 1
         elif pivot > target:
-            right = pivot_idx
-        elif pivot < target:
-            left = pivot_idx
+            right = pivot_idx - 1
+        else:
+            return pivot_idx
 
     return None
+
 
 def sort_uniqify_hashes(hashes, offsets):
     cdef np.ndarray[long, ndim=1] sort_indexes = np.argsort(hashes)
@@ -181,6 +184,7 @@ def build_mat_index(_hashes, _values, _hashes_file, _strings_file):
     cdef size_t value_dsize = _values.itemsize
 
     cdef np.ndarray[np.uint64_t, ndim=1] offsets = np.zeros((n_hashes,), dtype=np.uint64)
+    cdef np.ndarray[np.uint64_t, ndim=1] res_hashes = np.zeros((n_hashes,), dtype=np.uint64)
 
     cdef size_t inp_idx = 1
     cdef size_t offset_idx = 0
@@ -188,22 +192,26 @@ def build_mat_index(_hashes, _values, _hashes_file, _strings_file):
     cdef uint64_t prev_hash = hashes[0]
     cdef uint64_t cur_hash
     cdef uint64_t cur_offset = 0
+    cdef uint64_t cur_value
 
     cdef FILE *strings_f = fdopen(_strings_file.fileno(), "w")
 
     while inp_idx < n_hashes:
         cur_hash = hashes[inp_idx]
         if cur_hash != prev_hash:
+            res_hashes[offset_idx] = prev_hash
             offsets[offset_idx] = cur_offset
             offset_idx += 1
-        fwrite(&values[inp_idx], value_dsize, 1, strings_f)
+        prev_hash = cur_hash
+        cur_value = values[inp_idx]
+        fwrite(cur_value, value_dsize, 1, strings_f)
+        cur_offset += value_dsize
 
         inp_idx += 1
 
     fflush(strings_f)
 
-    _hashes.tofile(_hashes_file)
-    offsets.tofile(_hashes_file)
+    np.concatenate([res_hashes[:offset_idx], offsets[:offset_idx]]).tofile(_hashes_file)
 
 class SSTable(object):
 

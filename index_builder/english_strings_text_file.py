@@ -6,33 +6,32 @@ import sstable
 sys.path.append('../text_utils')
 import text_utils as tt
 
-import unicodedata as ud
+import numpy as np
 
 latin_letters= {}
 
-def is_latin(uchr):
-    try: return latin_letters[uchr]
-    except KeyError:
-         return latin_letters.setdefault(uchr, 'LATIN' in ud.name(uchr))
 
 def only_roman_chars(unistr):
-    return all(is_latin(uchr)
-           for uchr in unistr
-           if uchr.isalpha()) # isalpha suggested by John Machin
+    for c in unistr:
+        if (ord(c) & 0xC0) == 0x80:
+            return False
+    return True
 
 if __name__ == '__main__':
 
+    english_hashes = np.memmap(sys.argv[4], dtype=np.uint64)
+    english_hashes_idx = 0
+    max_english_hashes = english_hashes.shape[0]
+    table = sstable.SSTable(sys.argv[1], sys.argv[2])
     with open(sys.argv[3], 'w') as outf:
-        for idx, v in enumerate(sstable.SSTable(sys.argv[1], sys.argv[2]).raw_itervalues()):
-            if len(v) < 1:
-                continue
-            if v[0] == '-' and not v.startswith('-en'):
-                continue
-            try:
-                v = v.split('\t', 1)[1]
-            except:
-                continue
-            if not only_roman_chars(v.decode('utf-8')):
-                continue
-            outf.write(v)
-            outf.write('\n')
+        for idx in xrange(table.hashes.shape[0]):
+            if english_hashes_idx >= max_english_hashes:
+                break
+            if english_hashes[english_hashes_idx] == table.hashes[idx]:
+                v = table.read_idx(idx)
+                if only_roman_chars(v):
+                    outf.write('%s\n' % v)
+                english_hashes_idx += 1
+            while english_hashes_idx < max_english_hashes and \
+                    english_hashes[english_hashes_idx] < table.hashes[idx]:
+                english_hashes_idx += 1

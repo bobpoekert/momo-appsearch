@@ -2,6 +2,7 @@ import clean_text
 
 from multiprocessing import cpu_count
 import os, sys, shutil
+import traceback
 
 def split_points(infname, n_splits):
     inf_size = os.stat(infname).st_size
@@ -32,11 +33,13 @@ if __name__ == '__main__':
     bin_basename = sys.argv[3]
     infname = sys.argv[4]
     outfname = sys.argv[5]
+    english_basename = sys.argv[6]
 
     pids = []
     splits = split_points(infname, cpu_count())
     outfnames = ['%s.%d' % (outfname, idx) for idx in range(len(splits))]
     bin_outfnames = ['%s.%d' % (bin_basename, idx) for idx in range(len(splits))]
+    english_outfnames = ['%s.%d' % (english_basename, idx) for idx in range(len(splits))]
 
     for idx in range(len(splits)):
         pid = os.fork()
@@ -46,9 +49,12 @@ if __name__ == '__main__':
                     inf.seek(splits[idx])
                     with open(outfnames[idx], 'w') as outf:
                         with open(bin_outfnames[idx], 'w') as boutf:
-                            clean_text.run(inf, outf, boutf,
-                                    splits[idx + 1] - splits[idx] if idx < len(splits) - 1 \
-                                            else os.stat(infname).st_size - splits[idx])
+                            with open(english_outfnames[idx], 'w') as eoutf:
+                                clean_text.run(inf, outf, boutf, eoutf,
+                                        splits[idx + 1] - splits[idx] if idx < len(splits) - 1 \
+                                                else os.stat(infname).st_size - splits[idx])
+            except:
+                traceback.print_exc()
             finally:
                 sys.exit()
         else:
@@ -66,6 +72,12 @@ if __name__ == '__main__':
 
     with open(bin_basename, 'w') as boutf:
         for f2 in bin_outfnames:
+            with open(f2, 'r') as ff2:
+                shutil.copyfileobj(ff2, boutf)
+            os.unlink(f2)
+
+    with open(english_basename, 'w') as boutf:
+        for f2 in english_outfnames:
             with open(f2, 'r') as ff2:
                 shutil.copyfileobj(ff2, boutf)
             os.unlink(f2)

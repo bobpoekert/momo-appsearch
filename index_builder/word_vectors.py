@@ -33,27 +33,31 @@ if __name__ == '__main__':
     vec_model = sent2vec.Sent2vecModel()
     vec_model.load_model(sys.argv[4])
 
+    english_hashes = np.memmap(sys.argv[5], dtype=np.uint64)
+
+    def is_english(h):
+        return sstable.searchsorted_uint64(english_hashes, h) is not None
+
     print 'embedding strings'
     vectors = []
     indexes = []
     index_batch = []
     string_batch = []
     seen_strings = set([])
-    for idx, v in enumerate(sstable.SSTable(sys.argv[1], sys.argv[2]).raw_itervalues()):
+    table = sstable.SSTable(sys.argv[1], sys.argv[2])
+    for idx, v in enumerate(table.raw_itervalues()):
         try:
+            if not is_english(table.hashes[idx]):
+                continue
             if len(v) < 1:
-                continue
-            if v[0] == '-' and not v.startswith('-en'):
-                continue
-            try:
-                v = v.split('\t', 1)[1]
-            except:
                 continue
             if not only_roman_chars(v.decode('utf-8')):
                 continue
             if v in seen_strings:
                 continue
             seen_strings.add(v)
+            if idx % 10000 == 0:
+                print idx, v
             try:
                 string_batch.append(v.decode('utf-8'))
                 index_batch.append(idx)
