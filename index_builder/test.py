@@ -34,9 +34,6 @@ class TestCleanStrings(ut.TestCase):
     def test_ambiguities_keys_align(self):
         self.assertArrayEqual(backend().ambiguities.hashes, backend().clean_strings.hashes)
 
-    def test_clean_hashes_keys_align(self):
-        self.assertArrayClose(backend().clean_strings.hashes, backend().clean_hashes.hashes)
-
     def test_translations_keys_align(self):
         self.assertArrayClose(backend().translations.hashes, backend().clean_strings.hashes)
 
@@ -48,9 +45,6 @@ class TestCleanStrings(ut.TestCase):
         raw_hashes = np.fromfile(backend().clean_indexes.strings, dtype=np.uint64)
         raw_hashes = np.unique(raw_hashes)
         self.assertTrue(raw_hashes == backend().raw_strings.hashes)
-
-    def test_clean_hashes_table(self):
-        self.assertValidSSTable(backend().clean_hashes)
 
 
 if __name__ == '__main__':

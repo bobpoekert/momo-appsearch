@@ -173,46 +173,6 @@ def build_index(infile, hashes_tempname, hashes_outname, strings_tempname, strin
     np.concatenate((outp_hashes, outp_offsets)).tofile(hashes_outname)
 
 
-def build_mat_index(_hashes, _values, _hashes_file, _strings_file):
-    """
-    takes a sorted array of hashes and a matrix with the same height of values
-    and generates an sstable index of hashes -> matrix rows
-    """
-    cdef np.ndarray[np.uint64_t, ndim=1] hashes = _hashes
-    cdef size_t n_hashes = _hashes.shape[0]
-    cdef np.ndarray[np.uint64_t, ndim=1] values = _values
-    cdef size_t value_dsize = _values.itemsize
-
-    cdef np.ndarray[np.uint64_t, ndim=1] offsets = np.zeros((n_hashes,), dtype=np.uint64)
-    cdef np.ndarray[np.uint64_t, ndim=1] res_hashes = np.zeros((n_hashes,), dtype=np.uint64)
-
-    cdef size_t inp_idx = 1
-    cdef size_t offset_idx = 0
-
-    cdef uint64_t prev_hash = hashes[0]
-    cdef uint64_t cur_hash
-    cdef uint64_t cur_offset = 0
-    cdef uint64_t cur_value
-
-    cdef FILE *strings_f = fdopen(_strings_file.fileno(), "w")
-
-    while inp_idx < n_hashes:
-        cur_hash = hashes[inp_idx]
-        if cur_hash != prev_hash:
-            res_hashes[offset_idx] = prev_hash
-            offsets[offset_idx] = cur_offset
-            offset_idx += 1
-        prev_hash = cur_hash
-        cur_value = values[inp_idx]
-        fwrite(cur_value, value_dsize, 1, strings_f)
-        cur_offset += value_dsize
-
-        inp_idx += 1
-
-    fflush(strings_f)
-
-    np.concatenate([res_hashes[:offset_idx], offsets[:offset_idx]]).tofile(_hashes_file)
-
 class SSTable(object):
 
     def __init__(self, hashes_fname, strings_fname):

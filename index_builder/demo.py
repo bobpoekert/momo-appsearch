@@ -33,11 +33,6 @@ class TranslationIndex(sstable.SSTable):
     def decode(self, v):
         return np.frombuffer(v, dtype=np.uint64).reshape((-1, 2))
 
-class CleanHashesIndex(sstable.SSTable):
-
-    def decode(self, v):
-        return np.frombuffer(v, dtype=np.uint64)
-
 SuggestResult = namedtuple('SuggestResult', 'key string raw_strings translations ambiguity')
 Translation = namedtuple('Translation', 'locale string raw_strings score')
 
@@ -52,7 +47,12 @@ class Backend(object):
         self.n_hashes = self.clean_hash_mat.shape[0] / 2
         self.clean_hashes = self.clean_hash_mat[:self.n_hashes]
         self.raw_hashes = self.clean_hash_mat[self.n_hashes:]
-        self.ambiguities = DoubleIndex('ambiguity.bin')
+
+        ambiguities_blob = open('ambiguity.bin', 'r').read()
+        split_point = len(ambiguities_blob) / 2
+        self.ambiguities_hashes = np.frombuffer(ambiguities_blob[:split_point], dtype=np.uint64)
+        self.ambiguities_values = np.frombuffer(ambiguities_blob[split_point:], dtype=np.float64)
+
         self.translations = TranslationIndex('translations.sstable', 'translations.txt.sstable')
         self.clean_strings = sstable.SSTable('/mnt/zapk/strings.sstable', '/mnt/zapk/strings.txt.sstable')
         self.raw_strings = sstable.SSTable('/mnt/zapk/raw_strings.sstable', '/mnt/zapk/raw_strings.txt.sstable')
@@ -94,12 +94,15 @@ class Backend(object):
         idx = sstable.searchsorted_uint64(self.clean_hashes, h)
         return self.raw_hashes[idx]
 
+    def get_ambiguity(self, h):
+        idx = sstable.searchsorted_uint64(self.ambiguities_hashes, h)
+        if idx is None:
+            return None
+        return self.ambiguities_values[idx]
+
     def get_raw_strings(self, h):
         "clean_string hash -> raw strings"
         return self.raw_strings.get(self.get_raw_hash_from_clean(h))
-
-    def get_ambiguity(self, k):
-        return self.ambiguities.get(k)
 
     def get_translations(self, k):
         hashes = self.translations.get(k)

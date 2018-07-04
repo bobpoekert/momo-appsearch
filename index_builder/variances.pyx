@@ -38,12 +38,15 @@ def variances(_mat):
             cur_sum = 0
             cur_sum_squares = 0
             cur_count = 0
+            prev_hash = cur_hash
 
         cur_sum += cur_val
         cur_sum_squares += cur_val * cur_val
         cur_count += 1
 
         idx += 1
+        if idx % 10000 == 0:
+            print idx
 
 
     cur_mean = cur_sum / cur_count

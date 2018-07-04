@@ -27,6 +27,8 @@ def read_tab_groups(inf):
         if k == current_key:
             current_val_list.append(v)
         else:
+            if current_key is None:
+                current_key = k
             yield (current_key, current_val_list)
             current_key = k
             current_val_list = [v]
@@ -63,7 +65,7 @@ def hash_tokens(v):
     offsets = offsets[mask]
     return (hashes, offsets)
 
-def run(inf, outf, cleaned_hashes_table, english_hashes_table, max_bytes):
+def run(inf, outf, cleaned_hashes_table, english_hashes_table, hash_groups_table, max_bytes):
     for key, vals in read_tab_groups(inf):
         stripped_vals = [v[1] for v in vals]
         cleaned_vals = [v.strip() for v in text_utils.substitute_propernames(stripped_vals)]
@@ -78,6 +80,11 @@ def run(inf, outf, cleaned_hashes_table, english_hashes_table, max_bytes):
             locale = b[0].strip()
             if len(locale) < 1 or locale.startswith('-en'):
                 english_hashes_table.write(struct.pack('Q', ah))
+
+        if key is not None:
+            key_hash = sstable.hash_string(key)
+            for v in cleaned_vals:
+                hash_groups_table.write(struct.pack('QQ', key_hash, sstable.hash_string(v)))
 
         if key is not None:
             max_bytes -= sum(map(len, vals))
