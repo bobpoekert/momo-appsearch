@@ -6,6 +6,11 @@
 #include <sys/stat.h>
 #include <unistd.h>
 #include <string.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <stdarg.h>
 
 #include "util.h"
 
@@ -19,6 +24,34 @@
 
 #define TREE_CHUNK_SIZE 4096000
 #define VAL_GROUP_SIZE 40960
+
+void *mmap_read_file(char *fname) {
+    struct stat file_info;
+    if (stat(fname, &file_info) == -1) return NULL;
+
+    int fd = open(fname, O_RDONLY);
+
+    void *res = mmap(NULL, file_info.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
+    if (res == MAP_FAILED) {
+        perror("mmap");
+        return NULL;
+    }
+
+    return res;
+}
+
+static pthread_mutex_t printf_mutex;
+
+void sync_printf(const char *format, ...) {
+    va_list args;
+    va_start(args, format);
+
+    pthread_mutex_lock(&printf_mutex);
+    vprintf(format, args);
+    pthread_mutex_unlock(&printf_mutex);
+
+    va_end(args);
+}
 
 typedef struct HashPair {
     uint64_t left;
@@ -76,8 +109,10 @@ void Tree_free(Tree *tree) {
     TreeChunk *cur_chunk = NULL;
     while (cur_chunk != tree->tail_chunk) {
         TreeChunk *prev_chunk = cur_chunk;
-        cur_chunk = prev_chunk->next;
-        if (prev_chunk != NULL) free(prev_chunk);
+        if (prev_chunk != NULL) {
+            cur_chunk = prev_chunk->next;
+            free(prev_chunk);
+        }
     }
     free(tree);
 }
@@ -101,6 +136,16 @@ TreeNode *TreeNode_alloc(Tree *tree) {
 }
 
 int HashPair_compare(HashPair *a, HashPair *b) {
+    if (a == NULL) {
+        if (b == NULL) {
+            return 0;
+        } else {
+            return -1;
+        }
+    }
+    if (b == NULL) {
+        return 1;
+    }
     if (a->left == b->left) {
         if (a->right == b->right) {
             return 0;
@@ -221,10 +266,8 @@ void Tree_write_to_file(Tree *tree, FILE *outf) {
 
 }
 
-void Tree_write_to_buffer(Tree *tree, HashPair **_hashes, uint64_t **_counts) {
+void Tree_write_to_buffer(Tree *tree, HashPair *hashes, uint64_t *counts) {
 
-    HashPair *hashes = malloc(sizeof(HashPair) * tree->n_nodes);
-    uint64_t *counts = malloc(sizeof(uint64_t) * tree->n_nodes);
     size_t res_idx = 0;
     
     size_t stack_end_idx = 0;
@@ -252,60 +295,74 @@ void Tree_write_to_buffer(Tree *tree, HashPair **_hashes, uint64_t **_counts) {
             counts[res_idx] = node->value;
             res_idx++;
 
+            if (res_idx % 100000 == 0) {
+                sync_printf("%lu\n", res_idx);
+            }
+
             node = node->right;
         }
 
     }
 
     free(stack);
-
-    *_hashes = hashes;
-    *_counts = counts;
 }
 
 ssize_t mergesort_merge(
-        HashPair *res, uint64_t *res_counts, size_t res_size,
+        HashPair **res, uint64_t *res_counts, size_t max_res_size,
         HashPair **inps, uint64_t **inp_counts,
-        size_t *inp_sizes, size_t n_inps) {
+        size_t *inp_sizes, size_t n_slices) {
 
-    if (n_inps < 1) return 0;
+    if (n_slices < 1) return 0;
 
-    size_t *inp_idxes = malloc(sizeof(size_t) * n_inps);
-    memset(inp_idxes, 0, sizeof(size_t) * n_inps);
+    size_t *inp_idxes = malloc(sizeof(size_t) * n_slices);
+    memset(inp_idxes, 0, sizeof(size_t) * n_slices);
 
-    HashPair *current_min;
-    uint64_t current_min_count;
+    printf("%d\n", n_slices);
 
-    for (size_t res_idx = 0; res_idx < res_size; res_idx++) {
+    uint64_t *min_slices = malloc(sizeof(uint64_t) * n_slices);
 
-        current_min = &(inps[0][inp_idxes[0]]);
-        current_min_count = 0;
+    size_t res_idx = 0;
+    for (; res_idx < max_res_size; res_idx++) {
+
+        HashPair *current_min = NULL;
+        uint64_t current_min_count = 0;
 
         size_t live_groups_count = 0;
+        size_t min_slices_size = 0;
 
-        for (size_t current_inp = 1; current_inp < n_inps; current_inp++) {
-            if (inp_idxes[current_inp] > inp_sizes[current_inp]) continue;
-            HashPair *current_k = &inps[current_inp][inp_idxes[current_inp]];
-            if (HashPair_compare(current_k, current_min) < 0) current_min = current_k;
+        for (size_t current_slice = 0; current_slice < n_slices; current_slice++) {
+            if (inp_idxes[current_slice] >= inp_sizes[current_slice]) continue;
+            HashPair *current_k = &(inps[current_slice][inp_idxes[current_slice]]);
+            if ((current_min == NULL) || (HashPair_compare(current_k, current_min) < 0)) {
+                current_min = current_k;
+                min_slices_size = 0;
+                min_slices[min_slices_size++] = current_slice;
+                current_min_count = inp_counts[current_slice][inp_idxes[current_slice]];
+            } else if (current_min->left == current_k->left && current_min->right == current_k->right) {
+                min_slices[min_slices_size++] = current_slice;
+                current_min_count = inp_counts[current_slice][inp_idxes[current_slice]];
+            }
             live_groups_count++;
         }
 
         if (live_groups_count < 1) break;
+        if (current_min == NULL) break;
 
-        for (size_t current_inp=0; current_inp < n_inps; current_inp++) {
-            if (inp_idxes[current_inp] > inp_sizes[current_inp]) continue;
-            if (HashPair_compare(&inps[current_inp][inp_idxes[current_inp]], current_min) == 0) {
-                current_min_count += inp_counts[current_inp][inp_idxes[current_inp]];
-                inp_idxes[current_inp]++;
-            }
+        for (size_t i=0; i < min_slices_size; i++) {
+            inp_idxes[min_slices[i]]++;
         }
 
-        memcpy(&res[res_idx], &current_min, sizeof(HashPair));
+        res[res_idx] = current_min;
         res_counts[res_idx] = current_min_count;
 
     }
+    for (size_t slice=0; slice < n_slices; slice++) {
+        printf("%lu ", inp_idxes[slice]);
+    }
+    printf("\n");
+    printf("%d\n", res_idx);
 
-    return res_size;
+    return res_idx;
 
 }
 
@@ -340,13 +397,13 @@ int split_points(size_t n_splits, size_t *splits, size_t *split_sizes, FILE *inf
 
         splits[i] = off;
         if (i > 0) {
-            split_sizes[i - 1] = off - prev_split;
+            split_sizes[i - 1] = off;
         }
         prev_split = off;
 
     }
 
-    split_sizes[n_splits - 1] = inf_size - splits[n_splits - 1];
+    split_sizes[n_splits - 1] = inf_size;
 
     return 0;
 
@@ -354,9 +411,9 @@ int split_points(size_t n_splits, size_t *splits, size_t *split_sizes, FILE *inf
 
 typedef struct WorkerArgs {
 
-    int infd;
+    void *inf_buf;
     size_t split_offset;
-    size_t split_size;
+    size_t split_end;
     HashPair *res_hashes;
     uint64_t *res_counts;
     size_t res_size;
@@ -366,8 +423,10 @@ typedef struct WorkerArgs {
 void *worker(void *_args) {
 
     WorkerArgs *args = (WorkerArgs *) _args;
-    FILE *inf = fdopen(args->infd, "r");
-    fseek(inf, args->split_offset, SEEK_SET);
+    uint64_t *inf_buf = args->inf_buf;
+    size_t row_idx = args->split_offset / 16;
+    size_t row_start = row_idx;
+    size_t max_row_idx = args->split_end / 16;
     
     Tree *tree = Tree_alloc();
     
@@ -377,14 +436,13 @@ void *worker(void *_args) {
     uint64_t *current_val_hashes = malloc(VAL_GROUP_SIZE * sizeof(uint64_t));
     size_t current_val_hashes_idx = 0;
 
-    for (size_t row_idx=0; row_idx < args->split_size; row_idx++)  {
-        if (fread(&current_key_hash, sizeof(uint64_t), 1, inf) < 0) {
-            break;
-        }
-        if (fread(&current_val_hash, sizeof(uint64_t), 1, inf) < 0) {
-            break;
-        }
+    for (; row_idx < max_row_idx; row_idx++)  {
+        current_key_hash = inf_buf[row_idx * 2];
+        current_val_hash = inf_buf[row_idx * 2 + 1];
 
+        if (row_idx % 100000 == 0) {
+            sync_printf("%lu %lu\n", row_idx - row_start, tree->n_nodes);
+        }
 
         if (current_key_hash == prev_key_hash && current_val_hashes_idx < VAL_GROUP_SIZE) {
             current_val_hashes[current_val_hashes_idx++] = current_val_hash;
@@ -414,10 +472,22 @@ void *worker(void *_args) {
 
     }
 
-    args->res_size = tree->n_nodes;
+    size_t n_rows = tree->n_nodes;
 
-    Tree_write_to_buffer(tree, &args->res_hashes, &args->res_counts);
-    Tree_free(tree);
+    args->res_size = n_rows;
+
+    sync_printf("tree done\n");
+
+    HashPair *res_hashes = malloc(sizeof(HashPair) * n_rows);
+    uint64_t *res_counts = malloc(sizeof(uint64_t) * n_rows);
+
+    Tree_write_to_buffer(tree, res_hashes, res_counts);
+    /*Tree_free(tree);*/
+
+    args->res_hashes = res_hashes;
+    args->res_counts = res_counts;
+
+    sync_printf("thread done\n");
 
     pthread_exit(NULL);
 
@@ -430,16 +500,24 @@ int main(int argc, char **argv) {
         return 1;
     }
 
+    pthread_mutex_init(&printf_mutex, NULL);
+
     FILE *outf = fopen(argv[2], "w");
 
-    FILE *inf = fopen(argv[1], "r");
-    int infd = fileno(inf);
+    char *infname = argv[1];
+    FILE *inf = fopen(infname, "r");
 
     size_t n_cores = atol(argv[3]);
 
     size_t *splits = malloc(sizeof(size_t) * n_cores);
     size_t *split_sizes = malloc(sizeof(size_t) * n_cores);
     split_points(n_cores, splits, split_sizes, inf);
+
+    fclose(inf);
+
+    void *inf_buf = mmap_read_file(infname);
+
+    if (inf_buf == 0) return -1;
 
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -450,9 +528,11 @@ int main(int argc, char **argv) {
 
     for (size_t core_id=0; core_id < n_cores; core_id++) {
         WorkerArgs *args = &worker_args[core_id];
-        args->infd = infd;
+        args->inf_buf = inf_buf;
         args->split_offset = splits[core_id];
-        args->split_size = split_sizes[core_id];
+        args->split_end = split_sizes[core_id];
+        args->res_hashes = NULL;
+        args->res_counts = NULL;
 
         pthread_create(&threads[core_id], &attr, worker, (void *) args);
 
@@ -469,11 +549,8 @@ int main(int argc, char **argv) {
         max_size += worker_args[i].res_size;
     }
 
-    HashPair *res = malloc(sizeof(HashPair) * max_size);
-    uint64_t *res_counts = malloc(sizeof(uint64_t) * n_cores);
-    for (size_t i=0; i < n_cores; i++) {
-        res_counts[i] = worker_args[i].res_size;
-    }
+    HashPair **res = malloc(sizeof(HashPair *) * max_size);
+    uint64_t *res_counts = malloc(sizeof(uint64_t) * max_size);
 
     HashPair **inps = malloc(sizeof(HashPair *) * n_cores);
     uint64_t **inp_counts = malloc(sizeof(uint64_t *) * n_cores);
@@ -491,12 +568,12 @@ int main(int argc, char **argv) {
 
     for (size_t i=0; i < merged_size; i++) {
         uint64_t row[3];
-        HashPair p = res[i];
-        row[0] = p.left;
-        row[1] = p.right;
+        HashPair *p = res[i];
+        row[0] = p->left;
+        row[1] = p->right;
         row[2] = res_counts[i];
 
-        fwrite(&row, sizeof(uint64_t) * 3, 1, outf);
+        fwrite(&row, sizeof(row), 1, outf);
     }
 
     fclose(outf);
